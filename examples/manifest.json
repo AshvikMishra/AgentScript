@@ -1,0 +1,146 @@
+[
+  {
+    "file": "valid_report.as",
+    "title": "Valid: sanitized report (PRD example)",
+    "description": "Search, sanitize, summarize, ask for confirmation, then email. Passes every check and uses exactly its budget of 5 calls.",
+    "expect": null,
+    "warnings": [],
+    "run": {"task": "report", "args": {"topic": "AI safety"}, "expect": null}
+  },
+  {
+    "file": "valid_cleanup.as",
+    "title": "Valid: confirmed delete",
+    "description": "delete_file guarded by a confirm result held in a let variable.",
+    "expect": null,
+    "warnings": [],
+    "run": {"task": "cleanup", "args": {"path": "/tmp/old.log"}, "expect": null}
+  },
+  {
+    "file": "optimize_demo.as",
+    "title": "Optimizer: folding, dead code, duplicate call",
+    "description": "Constant folding removes the debug branch and the duplicate web_search is merged: 4 tool calls before, 2 after.",
+    "expect": null,
+    "warnings": [],
+    "run": {"task": "research", "args": {"topic": "compilers"}, "expect": null}
+  },
+  {
+    "file": "parallel_demo.as",
+    "title": "M7: parallel rounds",
+    "description": "Three independent searches run in one round: 4 rounds before scheduling, 2 after.",
+    "expect": null,
+    "warnings": [],
+    "run": {"task": "scout", "args": {"a": "rust", "b": "go", "c": "zig"}, "expect": null}
+  },
+  {
+    "file": "lex_unterminated.as",
+    "title": "Error 1: unterminated string",
+    "description": "The string literal never closes before the end of the line.",
+    "expect": {"code": "E101", "phase": "lexer", "line": 6, "col": 13},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "lex_illegal_char.as",
+    "title": "Error 1: illegal character",
+    "description": "'#' is not a character of the language.",
+    "expect": {"code": "E102", "phase": "lexer", "line": 6, "col": 15},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "syntax_missing_semicolon.as",
+    "title": "Error 2: missing semicolon",
+    "description": "The let statement on line 6 has no ';'. The error points just after the last token of that line.",
+    "expect": {"code": "E201", "phase": "parser", "line": 6, "col": 30},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "sem_undeclared.as",
+    "title": "Error 3: undeclared variable",
+    "description": "x is used but never declared.",
+    "expect": {"code": "E301", "phase": "semantic", "line": 6, "col": 12},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "sem_duplicate.as",
+    "title": "Error 3: duplicate variable",
+    "description": "a is declared twice in the same scope.",
+    "expect": {"code": "E302", "phase": "semantic", "line": 7, "col": 9},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "sem_type_mismatch.as",
+    "title": "Error 4: type mismatch",
+    "description": "web_search expects a string, but gets the int 42.",
+    "expect": {"code": "E303", "phase": "semantic", "line": 6, "col": 23},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "sem_missing_return.as",
+    "title": "Error 4: missing return",
+    "description": "When flag is false the task reaches its end without returning a bool.",
+    "expect": {"code": "E304", "phase": "semantic", "line": 9, "col": 3},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "sem_not_permitted.as",
+    "title": "Error 5: tool not permitted",
+    "description": "read_file is called but only llm is permitted.",
+    "expect": {"code": "E305", "phase": "semantic", "line": 6, "col": 16},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "sem_budget.as",
+    "title": "Error 6: budget exceeded",
+    "description": "Four tool calls on the worst path, budget is 3. The error points at the fourth call.",
+    "expect": {"code": "E306", "phase": "semantic", "line": 9, "col": 12},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "taint_injection.as",
+    "title": "Error 7: prompt injection (taint)",
+    "description": "The PRD example without sanitize: the untrusted search result flows through llm into send_email.",
+    "expect": {"code": "E401", "phase": "taint", "line": 9, "col": 14},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "approval_missing.as",
+    "title": "Error 8: irreversible call without confirm",
+    "description": "When force is true, delete_file runs on a path that skips confirm entirely.",
+    "expect": {"code": "E501", "phase": "approval", "line": 7, "col": 14},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "approval_one_branch.as",
+    "title": "Error 9: confirm on only one branch",
+    "description": "confirm is asked only when careful is true, and its result guards nothing; delete_file after the if is reachable without approval.",
+    "expect": {"code": "E502", "phase": "approval", "line": 9, "col": 12},
+    "warnings": [],
+    "run": null
+  },
+  {
+    "file": "runtime_budget.as",
+    "title": "Error 10: runtime budget guard",
+    "description": "The loop count is a runtime value, so the compiler warns and the VM enforces the budget: times = 5 trips the guard on the 4th call.",
+    "expect": null,
+    "warnings": [{"code": "W306", "phase": "semantic", "line": 6, "col": 12}],
+    "run": {"task": "poll", "args": {"topic": "news", "times": 5}, "expect": {"code": "E601", "phase": "runtime", "line": 7, "col": 15}}
+  },
+  {
+    "file": "runtime_index.as",
+    "title": "Runtime: index out of range",
+    "description": "The mock search returns 3 results, so results[9] fails in the VM.",
+    "expect": null,
+    "warnings": [],
+    "run": {"task": "tenth", "args": {"topic": "AI"}, "expect": {"code": "E603", "phase": "runtime", "line": 7, "col": 19}}
+  }
+]

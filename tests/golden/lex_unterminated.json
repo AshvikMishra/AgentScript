@@ -1,0 +1,25 @@
+{
+  "diagnostics": [
+    {
+      "phase": "lexer",
+      "code": "E101",
+      "severity": "error",
+      "message": "unterminated string: missing closing '\"' before end of line",
+      "line": 6,
+      "col": 13,
+      "path": null
+    }
+  ],
+  "phases": {
+    "tokens": null,
+    "ast": null,
+    "symbols": null,
+    "ir": null,
+    "cfg": null,
+    "taint": null,
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

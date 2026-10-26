@@ -1,0 +1,25 @@
+{
+  "diagnostics": [
+    {
+      "phase": "semantic",
+      "code": "E303",
+      "severity": "error",
+      "message": "argument 1 of web_search must be string, found int",
+      "line": 6,
+      "col": 23,
+      "path": null
+    }
+  ],
+  "phases": {
+    "tokens": "  1:1   AGENT      agent\n  1:7   IDENT      Broken\n  1:14  LBRACE     {\n  2:3   PERMIT     permit\n  2:10  IDENT      web_search\n  2:20  SEMI       ;\n  3:3   BUDGET     budget\n  3:10  CALLS      calls\n  3:16  ASSIGN     =\n  3:18  INT        1\n  3:19  SEMI       ;\n  5:3   TASK       task\n  5:8   IDENT      find\n  5:12  LPAREN     (\n  5:13  RPAREN     )\n  5:15  ARROW      ->\n  5:18  LIST_T     list\n  5:22  LT         <\n  5:23  STRING_T   string\n  5:29  GT         >\n  5:31  LBRACE     {\n  6:5   RETURN     return\n  6:12  IDENT      web_search\n  6:22  LPAREN     (\n  6:23  INT        42\n  6:25  RPAREN     )\n  6:26  SEMI       ;\n  7:3   RBRACE     }\n  8:1   RBRACE     }\n  9:1   EOF",
+    "ast": "Agent Broken @1:1\n  Permit [web_search] @2:3\n  budget:\n    Budget 1 @3:3\n  Task find return_type=list<string> @5:3\n    body:\n      Block @5:31\n        Return @6:5\n          Call web_search @6:12\n            IntLit 42 @6:23",
+    "symbols": null,
+    "ir": null,
+    "cfg": null,
+    "taint": null,
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

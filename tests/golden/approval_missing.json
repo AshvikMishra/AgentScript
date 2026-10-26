@@ -1,0 +1,41 @@
+{
+  "diagnostics": [
+    {
+      "phase": "approval",
+      "code": "E501",
+      "severity": "error",
+      "message": "irreversible call to 'delete_file' (line 7) is reachable without confirm",
+      "line": 7,
+      "col": 14,
+      "path": [
+        {
+          "line": 6,
+          "col": 5,
+          "note": "task purge starts (entry)"
+        },
+        {
+          "line": 6,
+          "col": 5,
+          "note": "line 6: if force -> true (L1)"
+        },
+        {
+          "line": 7,
+          "col": 14,
+          "note": "delete_file(...) is irreversible and not guarded by confirm"
+        }
+      ]
+    }
+  ],
+  "phases": {
+    "tokens": "  1:1   AGENT      agent\n  1:7   IDENT      Janitor\n  1:15  LBRACE     {\n  2:3   PERMIT     permit\n  2:10  IDENT      confirm\n  2:17  COMMA      ,\n  2:19  IDENT      delete_file\n  2:30  SEMI       ;\n  3:3   BUDGET     budget\n  3:10  CALLS      calls\n  3:16  ASSIGN     =\n  3:18  INT        3\n  3:19  SEMI       ;\n  5:3   TASK       task\n  5:8   IDENT      purge\n  5:13  LPAREN     (\n  5:14  IDENT      path\n  5:18  COLON      :\n  5:20  STRING_T   string\n  5:26  COMMA      ,\n  5:28  IDENT      force\n  5:33  COLON      :\n  5:35  BOOL_T     bool\n  5:39  RPAREN     )\n  5:41  ARROW      ->\n  5:44  BOOL_T     bool\n  5:49  LBRACE     {\n  6:5   IF         if\n  6:8   LPAREN     (\n  6:9   IDENT      force\n  6:14  RPAREN     )\n  6:16  LBRACE     {\n  7:7   RETURN     return\n  7:14  IDENT      delete_file\n  7:25  LPAREN     (\n  7:26  IDENT      path\n  7:30  RPAREN     )\n  7:31  SEMI       ;\n  8:5   RBRACE     }\n  9:5   IF         if\n  9:8   LPAREN     (\n  9:9   IDENT      confirm\n  9:16  LPAREN     (\n  9:17  STRING     \"Delete \"\n  9:27  PLUS       +\n  9:29  IDENT      path\n  9:34  PLUS       +\n  9:36  STRING     \"?\"\n  9:39  RPAREN     )\n  9:40  RPAREN     )\n  9:42  LBRACE     {\n 10:7   RETURN     return\n 10:14  IDENT      delete_file\n 10:25  LPAREN     (\n 10:26  IDENT      path\n 10:30  RPAREN     )\n 10:31  SEMI       ;\n 11:5   RBRACE     }\n 12:5   RETURN     return\n 12:12  FALSE      false\n 12:17  SEMI       ;\n 13:3   RBRACE     }\n 14:1   RBRACE     }\n 15:1   EOF",
+    "ast": "Agent Janitor @1:1\n  Permit [confirm, delete_file] @2:3\n  budget:\n    Budget 3 @3:3\n  Task purge return_type=bool @5:3\n    Param path declared_type=string @5:14\n    Param force declared_type=bool @5:28\n    body:\n      Block @5:49\n        If @6:5\n          Name force : bool @6:9\n          then_block:\n            Block @6:16\n              Return @7:7\n                Call delete_file : bool @7:14\n                  Name path : string @7:26\n        If @9:5\n          Call confirm : bool @9:9\n            Binary + : string @9:34\n              Binary + : string @9:27\n                StrLit 'Delete ' : string @9:17\n                Name path : string @9:29\n              StrLit '?' : string @9:36\n          then_block:\n            Block @9:42\n              Return @10:7\n                Call delete_file : bool @10:14\n                  Name path : string @10:26\n        Return @12:5\n          BoolLit False : bool @12:12",
+    "symbols": "Scopes\n  builtins\n    web_search   tool     (string) -> list<string>     -\n    read_file    tool     (string) -> string           -\n    llm          tool     (string) -> string           -\n    send_email   tool     (string, string) -> bool     -\n    delete_file  tool     (string) -> bool             -\n    sanitize     tool     (string) -> string           -\n    confirm      tool     (string) -> bool             -\n    agent Janitor @1:1\n      purge        task     (string, bool) -> bool       5:3\n      task purge @5:3\n        path         param    string                       5:14\n        force        param    bool                         5:28\n        block purge.1 @5:49\n          block purge.2 @6:16\n          block purge.3 @9:42\n\nPermitted tools: confirm, delete_file\n\nBudget (static worst path per task run)\n  task   worst path  budget  check\n  purge  3           3       static\n         path: delete_file@7:14 -> confirm@9:9 -> delete_file@10:14",
+    "ir": "task purge(path: string, force: bool) -> bool\n      if force goto L1 else L2                 ; line 6\n  L1:\n      t1 = call delete_file(path)              ; line 7\n      return t1                                ; line 7\n  L2:\n      t2 = \"Delete \" + path                    ; line 9\n      t3 = t2 + \"?\"                            ; line 9\n      t4 = call confirm(t3)                    ; line 9\n      if t4 goto L3 else L4                    ; line 9\n  L3:\n      t5 = call delete_file(path)              ; line 10\n      return t5                                ; line 10\n  L4:\n      return false                             ; line 12",
+    "cfg": "task purge(path: string, force: bool) -> bool\n  entry:\n      preds: -\n      succs: L1, L2\n      if force goto L1 else L2                 ; line 6\n  L1:\n      preds: entry\n      succs: -\n      t1 = call delete_file(path)              ; line 7\n      return t1                                ; line 7\n  L2:\n      preds: entry\n      succs: L3, L4\n      t2 = \"Delete \" + path                    ; line 9\n      t3 = t2 + \"?\"                            ; line 9\n      t4 = call confirm(t3)                    ; line 9\n      if t4 goto L3 else L4                    ; line 9\n  L3:\n      preds: L2\n      succs: -\n      t5 = call delete_file(path)              ; line 10\n      return t5                                ; line 10\n  L4:\n      preds: L2\n      succs: -\n      return false                             ; line 12",
+    "taint": "task purge  (fixed point after 1 iteration(s))\n  untrusted variables:\n    (none)\n  sanitized (trusted) results:\n    (none)\n  privileged sinks:\n    delete_file line 7  [path: trusted]  OK\n    delete_file line 10  [path: trusted]  OK",
+    "approval": "task purge\n  dominators:\n    entry  dom = {entry}  idom = -\n    L1     dom = {entry, L1}  idom = entry\n    L2     dom = {entry, L2}  idom = entry\n    L3     dom = {entry, L2, L3}  idom = L2\n    L4     dom = {entry, L2, L4}  idom = L2\n  guard blocks:\n    L3  (if confirm(...) on line 9; confirm on line 9)\n  irreversible calls:\n    delete_file line 7 in L1: guarded by - -> E501\n    delete_file line 10 in L3: guarded by L3 -> approved\n\nE501 [approval] 7:14: irreversible call to 'delete_file' (line 7) is reachable without confirm\n    6:5  task purge starts (entry)\n    6:5  line 6: if force -> true (L1)\n    7:14  delete_file(...) is irreversible and not guarded by confirm",
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

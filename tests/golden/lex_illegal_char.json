@@ -1,0 +1,25 @@
+{
+  "diagnostics": [
+    {
+      "phase": "lexer",
+      "code": "E102",
+      "severity": "error",
+      "message": "illegal character '#'",
+      "line": 6,
+      "col": 15,
+      "path": null
+    }
+  ],
+  "phases": {
+    "tokens": null,
+    "ast": null,
+    "symbols": null,
+    "ir": null,
+    "cfg": null,
+    "taint": null,
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

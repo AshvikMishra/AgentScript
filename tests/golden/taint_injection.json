@@ -1,0 +1,51 @@
+{
+  "diagnostics": [
+    {
+      "phase": "taint",
+      "code": "E401",
+      "severity": "error",
+      "message": "untrusted data from web_search (line 6) reaches privileged tool 'send_email' (line 9), argument 2; pass it through sanitize first",
+      "line": 9,
+      "col": 14,
+      "path": [
+        {
+          "line": 6,
+          "col": 15,
+          "note": "raw = call web_search(topic)  <- web_search returns untrusted data"
+        },
+        {
+          "line": 7,
+          "col": 42,
+          "note": "t1 = raw[0]"
+        },
+        {
+          "line": 7,
+          "col": 37,
+          "note": "t2 = \"Summarize: \" + t1"
+        },
+        {
+          "line": 7,
+          "col": 19,
+          "note": "summary = call llm(t2)"
+        },
+        {
+          "line": 9,
+          "col": 14,
+          "note": "t4 = call send_email(\"me@example.com\", summary)  <- privileged sink"
+        }
+      ]
+    }
+  ],
+  "phases": {
+    "tokens": "  1:1   AGENT      agent\n  1:7   IDENT      Assistant\n  1:17  LBRACE     {\n  2:3   PERMIT     permit\n  2:10  IDENT      web_search\n  2:20  COMMA      ,\n  2:22  IDENT      llm\n  2:25  COMMA      ,\n  2:27  IDENT      sanitize\n  2:35  COMMA      ,\n  2:37  IDENT      send_email\n  2:47  COMMA      ,\n  2:49  IDENT      confirm\n  2:56  SEMI       ;\n  3:3   BUDGET     budget\n  3:10  CALLS      calls\n  3:16  ASSIGN     =\n  3:18  INT        5\n  3:19  SEMI       ;\n  5:3   TASK       task\n  5:8   IDENT      report\n  5:14  LPAREN     (\n  5:15  IDENT      topic\n  5:20  COLON      :\n  5:22  STRING_T   string\n  5:28  RPAREN     )\n  5:30  ARROW      ->\n  5:33  BOOL_T     bool\n  5:38  LBRACE     {\n  6:5   LET        let\n  6:9   IDENT      raw\n  6:13  ASSIGN     =\n  6:15  IDENT      web_search\n  6:25  LPAREN     (\n  6:26  IDENT      topic\n  6:31  RPAREN     )\n  6:32  SEMI       ;\n  7:5   LET        let\n  7:9   IDENT      summary\n  7:17  ASSIGN     =\n  7:19  IDENT      llm\n  7:22  LPAREN     (\n  7:23  STRING     \"Summarize: \"\n  7:37  PLUS       +\n  7:39  IDENT      raw\n  7:42  LBRACKET   [\n  7:43  INT        0\n  7:44  RBRACKET   ]\n  7:45  RPAREN     )\n  7:46  SEMI       ;\n  8:5   IF         if\n  8:8   LPAREN     (\n  8:9   IDENT      confirm\n  8:16  LPAREN     (\n  8:17  STRING     \"Send report?\"\n  8:31  RPAREN     )\n  8:32  RPAREN     )\n  8:34  LBRACE     {\n  9:7   RETURN     return\n  9:14  IDENT      send_email\n  9:24  LPAREN     (\n  9:25  STRING     \"me@example.com\"\n  9:41  COMMA      ,\n  9:43  IDENT      summary\n  9:50  RPAREN     )\n  9:51  SEMI       ;\n 10:5   RBRACE     }\n 11:5   RETURN     return\n 11:12  FALSE      false\n 11:17  SEMI       ;\n 12:3   RBRACE     }\n 13:1   RBRACE     }\n 14:1   EOF",
+    "ast": "Agent Assistant @1:1\n  Permit [web_search, llm, sanitize, send_email, confirm] @2:3\n  budget:\n    Budget 5 @3:3\n  Task report return_type=bool @5:3\n    Param topic declared_type=string @5:15\n    body:\n      Block @5:38\n        Let raw @6:5\n          Call web_search : list<string> @6:15\n            Name topic : string @6:26\n        Let summary @7:5\n          Call llm : string @7:19\n            Binary + : string @7:37\n              StrLit 'Summarize: ' : string @7:23\n              Index : string @7:42\n                Name raw : list<string> @7:39\n                IntLit 0 : int @7:43\n        If @8:5\n          Call confirm : bool @8:9\n            StrLit 'Send report?' : string @8:17\n          then_block:\n            Block @8:34\n              Return @9:7\n                Call send_email : bool @9:14\n                  StrLit 'me@example.com' : string @9:25\n                  Name summary : string @9:43\n        Return @11:5\n          BoolLit False : bool @11:12",
+    "symbols": "Scopes\n  builtins\n    web_search   tool     (string) -> list<string>     -\n    read_file    tool     (string) -> string           -\n    llm          tool     (string) -> string           -\n    send_email   tool     (string, string) -> bool     -\n    delete_file  tool     (string) -> bool             -\n    sanitize     tool     (string) -> string           -\n    confirm      tool     (string) -> bool             -\n    agent Assistant @1:1\n      report       task     (string) -> bool             5:3\n      task report @5:3\n        topic        param    string                       5:15\n        block report.1 @5:38\n          raw          variable list<string>                 6:9\n          summary      variable string                       7:9\n          block report.2 @8:34\n\nPermitted tools: web_search, llm, sanitize, send_email, confirm\n\nBudget (static worst path per task run)\n  task    worst path  budget  check\n  report  4           5       static\n          path: web_search@6:15 -> llm@7:19 -> confirm@8:9 -> send_email@9:14",
+    "ir": "task report(topic: string) -> bool\n      raw = call web_search(topic)             ; line 6\n      t1 = raw[0]                              ; line 7\n      t2 = \"Summarize: \" + t1                  ; line 7\n      summary = call llm(t2)                   ; line 7\n      t3 = call confirm(\"Send report?\")        ; line 8\n      if t3 goto L1 else L2                    ; line 8\n  L1:\n      t4 = call send_email(\"me@example.com\", summary) ; line 9\n      return t4                                ; line 9\n  L2:\n      return false                             ; line 11",
+    "cfg": "task report(topic: string) -> bool\n  entry:\n      preds: -\n      succs: L1, L2\n      raw = call web_search(topic)             ; line 6\n      t1 = raw[0]                              ; line 7\n      t2 = \"Summarize: \" + t1                  ; line 7\n      summary = call llm(t2)                   ; line 7\n      t3 = call confirm(\"Send report?\")        ; line 8\n      if t3 goto L1 else L2                    ; line 8\n  L1:\n      preds: entry\n      succs: -\n      t4 = call send_email(\"me@example.com\", summary) ; line 9\n      return t4                                ; line 9\n  L2:\n      preds: entry\n      succs: -\n      return false                             ; line 11",
+    "taint": "task report  (fixed point after 2 iteration(s))\n  untrusted variables:\n    raw          line 6    from web_search (line 6)\n    t1           line 7    from web_search (line 6)\n    t2           line 7    from web_search (line 6)\n    summary      line 7    from web_search (line 6)\n  sanitized (trusted) results:\n    (none)\n  privileged sinks:\n    send_email line 9  [\"me@example.com\": trusted, summary: untrusted from web_search]  VIOLATION\n\nE401 [taint] 9:14: untrusted data from web_search (line 6) reaches privileged tool 'send_email' (line 9), argument 2; pass it through sanitize first\n    6:15  raw = call web_search(topic)  <- web_search returns untrusted data\n    7:42  t1 = raw[0]\n    7:37  t2 = \"Summarize: \" + t1\n    7:19  summary = call llm(t2)\n    9:14  t4 = call send_email(\"me@example.com\", summary)  <- privileged sink",
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

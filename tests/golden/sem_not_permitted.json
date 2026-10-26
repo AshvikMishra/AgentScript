@@ -1,0 +1,25 @@
+{
+  "diagnostics": [
+    {
+      "phase": "semantic",
+      "code": "E305",
+      "severity": "error",
+      "message": "tool 'read_file' is not permitted; add it to a permit declaration",
+      "line": 6,
+      "col": 16,
+      "path": null
+    }
+  ],
+  "phases": {
+    "tokens": "  1:1   AGENT      agent\n  1:7   IDENT      Reader\n  1:14  LBRACE     {\n  2:3   PERMIT     permit\n  2:10  IDENT      llm\n  2:13  SEMI       ;\n  3:3   BUDGET     budget\n  3:10  CALLS      calls\n  3:16  ASSIGN     =\n  3:18  INT        2\n  3:19  SEMI       ;\n  5:3   TASK       task\n  5:8   IDENT      summarize\n  5:17  LPAREN     (\n  5:18  IDENT      path\n  5:22  COLON      :\n  5:24  STRING_T   string\n  5:30  RPAREN     )\n  5:32  ARROW      ->\n  5:35  STRING_T   string\n  5:42  LBRACE     {\n  6:5   LET        let\n  6:9   IDENT      text\n  6:14  ASSIGN     =\n  6:16  IDENT      read_file\n  6:25  LPAREN     (\n  6:26  IDENT      path\n  6:30  RPAREN     )\n  6:31  SEMI       ;\n  7:5   RETURN     return\n  7:12  IDENT      llm\n  7:15  LPAREN     (\n  7:16  IDENT      text\n  7:20  RPAREN     )\n  7:21  SEMI       ;\n  8:3   RBRACE     }\n  9:1   RBRACE     }\n 10:1   EOF",
+    "ast": "Agent Reader @1:1\n  Permit [llm] @2:3\n  budget:\n    Budget 2 @3:3\n  Task summarize return_type=string @5:3\n    Param path declared_type=string @5:18\n    body:\n      Block @5:42\n        Let text @6:5\n          Call read_file @6:16\n            Name path @6:26\n        Return @7:5\n          Call llm @7:12\n            Name text @7:16",
+    "symbols": null,
+    "ir": null,
+    "cfg": null,
+    "taint": null,
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

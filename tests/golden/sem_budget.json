@@ -1,0 +1,46 @@
+{
+  "diagnostics": [
+    {
+      "phase": "semantic",
+      "code": "E306",
+      "severity": "error",
+      "message": "task 'dig' may make 4 tool calls on its worst path, but the budget is 3",
+      "line": 9,
+      "col": 12,
+      "path": [
+        {
+          "line": 6,
+          "col": 13,
+          "note": "call 1: web_search"
+        },
+        {
+          "line": 7,
+          "col": 13,
+          "note": "call 2: web_search"
+        },
+        {
+          "line": 8,
+          "col": 13,
+          "note": "call 3: web_search"
+        },
+        {
+          "line": 9,
+          "col": 12,
+          "note": "call 4: llm (over budget)"
+        }
+      ]
+    }
+  ],
+  "phases": {
+    "tokens": "  1:1   AGENT      agent\n  1:7   IDENT      Greedy\n  1:14  LBRACE     {\n  2:3   PERMIT     permit\n  2:10  IDENT      web_search\n  2:20  COMMA      ,\n  2:22  IDENT      llm\n  2:25  SEMI       ;\n  3:3   BUDGET     budget\n  3:10  CALLS      calls\n  3:16  ASSIGN     =\n  3:18  INT        3\n  3:19  SEMI       ;\n  5:3   TASK       task\n  5:8   IDENT      dig\n  5:11  LPAREN     (\n  5:12  IDENT      topic\n  5:17  COLON      :\n  5:19  STRING_T   string\n  5:25  RPAREN     )\n  5:27  ARROW      ->\n  5:30  STRING_T   string\n  5:37  LBRACE     {\n  6:5   LET        let\n  6:9   IDENT      a\n  6:11  ASSIGN     =\n  6:13  IDENT      web_search\n  6:23  LPAREN     (\n  6:24  IDENT      topic\n  6:29  RPAREN     )\n  6:30  SEMI       ;\n  7:5   LET        let\n  7:9   IDENT      b\n  7:11  ASSIGN     =\n  7:13  IDENT      web_search\n  7:23  LPAREN     (\n  7:24  IDENT      a\n  7:25  LBRACKET   [\n  7:26  INT        1\n  7:27  RBRACKET   ]\n  7:28  RPAREN     )\n  7:29  SEMI       ;\n  8:5   LET        let\n  8:9   IDENT      c\n  8:11  ASSIGN     =\n  8:13  IDENT      web_search\n  8:23  LPAREN     (\n  8:24  IDENT      b\n  8:25  LBRACKET   [\n  8:26  INT        1\n  8:27  RBRACKET   ]\n  8:28  RPAREN     )\n  8:29  SEMI       ;\n  9:5   RETURN     return\n  9:12  IDENT      llm\n  9:15  LPAREN     (\n  9:16  IDENT      c\n  9:17  LBRACKET   [\n  9:18  INT        1\n  9:19  RBRACKET   ]\n  9:20  RPAREN     )\n  9:21  SEMI       ;\n 10:3   RBRACE     }\n 11:1   RBRACE     }\n 12:1   EOF",
+    "ast": "Agent Greedy @1:1\n  Permit [web_search, llm] @2:3\n  budget:\n    Budget 3 @3:3\n  Task dig return_type=string @5:3\n    Param topic declared_type=string @5:12\n    body:\n      Block @5:37\n        Let a @6:5\n          Call web_search @6:13\n            Name topic @6:24\n        Let b @7:5\n          Call web_search @7:13\n            Index @7:25\n              Name a @7:24\n              IntLit 1 @7:26\n        Let c @8:5\n          Call web_search @8:13\n            Index @8:25\n              Name b @8:24\n              IntLit 1 @8:26\n        Return @9:5\n          Call llm @9:12\n            Index @9:17\n              Name c @9:16\n              IntLit 1 @9:18",
+    "symbols": null,
+    "ir": null,
+    "cfg": null,
+    "taint": null,
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}

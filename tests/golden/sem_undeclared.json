@@ -1,0 +1,25 @@
+{
+  "diagnostics": [
+    {
+      "phase": "semantic",
+      "code": "E301",
+      "severity": "error",
+      "message": "undeclared variable 'x'",
+      "line": 6,
+      "col": 12,
+      "path": null
+    }
+  ],
+  "phases": {
+    "tokens": "  1:1   AGENT      agent\n  1:7   IDENT      Broken\n  1:14  LBRACE     {\n  2:3   PERMIT     permit\n  2:10  IDENT      llm\n  2:13  SEMI       ;\n  3:3   BUDGET     budget\n  3:10  CALLS      calls\n  3:16  ASSIGN     =\n  3:18  INT        1\n  3:19  SEMI       ;\n  5:3   TASK       task\n  5:8   IDENT      answer\n  5:14  LPAREN     (\n  5:15  RPAREN     )\n  5:17  ARROW      ->\n  5:20  STRING_T   string\n  5:27  LBRACE     {\n  6:5   RETURN     return\n  6:12  IDENT      x\n  6:13  SEMI       ;\n  7:3   RBRACE     }\n  8:1   RBRACE     }\n  9:1   EOF",
+    "ast": "Agent Broken @1:1\n  Permit [llm] @2:3\n  budget:\n    Budget 1 @3:3\n  Task answer return_type=string @5:3\n    body:\n      Block @5:27\n        Return @6:5\n          Name x @6:12",
+    "symbols": null,
+    "ir": null,
+    "cfg": null,
+    "taint": null,
+    "approval": null,
+    "optimized_ir": null,
+    "schedule": null,
+    "bytecode": null
+  }
+}
