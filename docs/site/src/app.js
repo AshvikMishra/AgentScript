@@ -159,7 +159,7 @@
       for (const p of g.pages) {
         const m = p.path.match(/how-it-works\/(\d\d)-/);
         const num = m ? m[1] : p.group === "Specification" ? "§" : p.group === "Presentation" ? "▶" : "·";
-        const title = p.title.replace(/^\d\d\s*[-.:]\s*/, "");
+        const title = (p.nav || p.title).replace(/^\d\d\s*[-.:]\s*/, "");
         parts.push(`<a class="nav-link" data-route="${p.id}" href="${route(p.id)}"><span class="num">${num}</span>${esc(title)}</a>`);
       }
       parts.push("</div>");
@@ -203,8 +203,8 @@
     const prev = PAGES[i - 1];
     const next = PAGES[i + 1];
     return `<nav class="pager">
-      ${prev ? `<a class="prev" href="${route(prev.id)}"><div class="dir">Previous</div><div class="t">${esc(prev.title)}</div></a>` : "<span></span>"}
-      ${next ? `<a class="next" href="${route(next.id)}"><div class="dir">Next</div><div class="t">${esc(next.title)}</div></a>` : ""}
+      ${prev ? `<a class="prev" href="${route(prev.id)}"><div class="dir">Previous</div><div class="t">${esc(prev.nav || prev.title)}</div></a>` : "<span></span>"}
+      ${next ? `<a class="next" href="${route(next.id)}"><div class="dir">Next</div><div class="t">${esc(next.nav || next.title)}</div></a>` : ""}
     </nav>`;
   }
 
@@ -265,7 +265,8 @@
     <span class="k">return</span> false;
   }
 }
-<span class="bad">E401 [taint] 9:14: untrusted data from web_search (line 6) reaches privileged tool 'send_email' (line 9)</span>
+<span class="bad">E401 [taint] 9:14: untrusted data from web_search (line 6)
+  reaches privileged tool 'send_email' (line 9)</span>
 <span class="ok">add sanitize(raw[0]) and it compiles: 5 of 5 calls, value true</span></div>
       </section>
 

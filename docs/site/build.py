@@ -17,23 +17,23 @@ ROOT = DOCS.parent
 SRC = SITE / "src"
 REPO_URL = "https://github.com/AshvikMishra/AgentScript"
 
-# (group, path relative to docs/, short title override or None)
+# (group, path relative to docs/, short navigation title or None to use the H1)
 PAGES = [
     ("Start here", "README.md", "Docs index"),
-    ("Start here", "how-it-works/00-overview.md", None),
-    ("Start here", "how-it-works/01-language.md", None),
+    ("Start here", "how-it-works/00-overview.md", "Overview"),
+    ("Start here", "how-it-works/01-language.md", "The language"),
     ("Specification", "PRD.md", "Product requirements (PRD)"),
     ("Specification", "IMPLEMENTATION_PLAN.md", "Implementation plan"),
-    ("How it works", "how-it-works/02-lexer.md", None),
-    ("How it works", "how-it-works/03-parser.md", None),
-    ("How it works", "how-it-works/04-semantic-analysis.md", None),
-    ("How it works", "how-it-works/05-ir-and-cfg.md", None),
-    ("How it works", "how-it-works/06-taint-analysis.md", None),
-    ("How it works", "how-it-works/07-approval-analysis.md", None),
-    ("How it works", "how-it-works/08-optimizer.md", None),
-    ("How it works", "how-it-works/09-codegen-and-vm.md", None),
-    ("How it works", "how-it-works/10-editor-and-api.md", None),
-    ("How it works", "how-it-works/11-parallel-scheduling.md", None),
+    ("How it works", "how-it-works/02-lexer.md", "Lexer"),
+    ("How it works", "how-it-works/03-parser.md", "Parser"),
+    ("How it works", "how-it-works/04-semantic-analysis.md", "Semantic analysis"),
+    ("How it works", "how-it-works/05-ir-and-cfg.md", "IR and CFG"),
+    ("How it works", "how-it-works/06-taint-analysis.md", "Taint analysis"),
+    ("How it works", "how-it-works/07-approval-analysis.md", "Approval analysis"),
+    ("How it works", "how-it-works/08-optimizer.md", "Optimizer"),
+    ("How it works", "how-it-works/09-codegen-and-vm.md", "Codegen and VM"),
+    ("How it works", "how-it-works/10-editor-and-api.md", "Editor and API"),
+    ("How it works", "how-it-works/11-parallel-scheduling.md", "Parallel scheduling"),
     ("Presentation", "presentation/demo-script.md", "Demo script"),
     ("Presentation", "presentation/viva-notes.md", "Viva notes"),
     ("Reference", "PRD-Original.md", "Original PRD (reference only)"),
@@ -60,7 +60,8 @@ def collect() -> dict:
             "id": doc_id(rel),
             "path": "docs/" + rel,
             "group": group,
-            "title": title or first_heading(md, rel),
+            "title": first_heading(md, rel) if rel.startswith("how-it-works/") else (title or first_heading(md, rel)),
+            "nav": title or first_heading(md, rel),
             "md": md,
         })
     manifest = json.loads((ROOT / "examples" / "manifest.json").read_text(encoding="utf-8"))
