@@ -45,14 +45,17 @@ simply by not being in the map.
 
 | Structure | Type | Purpose |
 | --- | --- | --- |
-| `state` | `dict[str, list[PathStep]]` | Untrusted variables at one program point, each with the chain of steps that made it untrusted. |
-| `IN[b]`, `OUT[b]` | one `state` per basic block | Facts at block entry and exit. |
-| `PathStep(line, col, note)` | from `diagnostics.py` | One step of a provenance chain: the source call, each instruction that passed the taint on, and finally the sink. |
+| `state` | `dict[str, TaintInfo]` | Untrusted variables at one program point, each with the provenance that made it untrusted. |
+| `TaintInfo(source_tool, source_line, source_col, steps)` | frozen dataclass in `taint.py` | The source call and the chain of `PathStep`s since; `extend(instr)` appends one step. |
+| `IN[b]`, `OUT[b]` | one `state` per reachable basic block (`entries`, `exits` in `solve`) | Facts at block entry and exit. |
+| `PathStep(line, col, note)` | from `diagnostics.py` | One step of a provenance chain: the source call, each instruction that passed the taint on, and finally the sink. The note is the IR instruction text. |
 
-**`TaintReport`.** Per task: each untrusted variable with the location of its definition and the
-source it came from, and each privileged call that was checked. Its `artifact()` gives the text for
-the Taint tab and the data the editor uses to highlight untrusted values in the code (see
-`10-editor-and-api.md`). The plan fixes `analyze_taint(cfgs) -> TaintReport` with `.artifact()` and the untrusted
+**`TaintReport`.** Per task (`TaskTaint`): the number of fixed-point passes, the untrusted names at
+each block entry, each untrusted variable with the line of its definition and the source it came
+from (`UntrustedVar`), each `sanitize` result (`SanitizedResult`) and each privileged call that was
+checked with the label of every argument (`SinkCheck`). Its `artifact()` gives the text for the
+Taint tab and the data the editor uses to highlight untrusted values in the code
+(`tainted_lines`, see `10-editor-and-api.md`). The plan fixes `analyze_taint(cfgs) -> TaintReport` with `.artifact()` and the untrusted
 variables per task with their source (IMPLEMENTATION_PLAN.md M4 step 4); the definition positions
 and checked calls are the simplest additions the editor needs.
 
@@ -82,10 +85,10 @@ an argument is in the untrusted set, report E401 with the stored provenance as t
 any old fact. `Branch` changes nothing: there are no implicit flows (section 6).
 
 **Meet at joins.** `IN[entry]` is empty (all parameters trusted). For every other block,
-`IN[b]` is the union of `OUT[p]` over its predecessors `p`. The first time a variable becomes
-untrusted at a block entry, its provenance is copied from the first predecessor (in `preds` order)
-that has it untrusted, and later iterations keep it. This makes the reported path deterministic,
-which the golden tests need.
+`IN[b]` is the union of `OUT[p]` over its reachable predecessors `p`. Each variable's provenance
+is taken from the first reachable predecessor (in `preds` order, which follows layout order) that
+has it untrusted. This makes the reported path deterministic, which the golden tests need.
+Unreachable blocks are skipped entirely: they are not iterated and do not contribute to a meet.
 
 **Termination.** A variable can only move from trusted to untrusted at a block entry, never back
 (the union only grows and the transfer function is monotone). There are finitely many variables and
@@ -95,36 +98,38 @@ the *set of untrusted variables* at every block entry, not the provenance.
 **Sink rule.** For every `Call` whose tool is `privileged`: if any argument is a `Var` in the
 current state, raise **E401** at the call's line and column. The message names the source tool and
 its line and the sink tool and its line. The `path` is the provenance chain of that argument plus a
-final step at the sink. Tasks are checked in source order, blocks in layout order, instructions in
-order; the first violation is reported (every phase reports at most one error).
+final step at the sink. Every task is analysed and every sink recorded first (so the Taint tab
+shows the full report even when compilation fails); then tasks are scanned in source order, sinks
+in layout order, arguments left to right, and the first violation is reported (every phase reports
+at most one error).
 
 ```
 analyze_taint(cfgs):
     for cfg in cfgs:                                  # one task at a time, source order
-        IN  = {b: {} for b in cfg.blocks}
-        OUT = {b: {} for b in cfg.blocks}
+        R = reachable blocks of cfg, in layout order
+        IN  = {b: {} for b in R}
+        OUT = {}
         changed = True
         while changed:
             changed = False
-            for b in cfg.blocks (layout order):
+            for b in R:
                 new_in = {}                           # entry block: no predecessors -> {}
-                for p in b.preds:
-                    for var, prov in OUT[p].items():
-                        if var not in new_in:
-                            new_in[var] = IN[b].get(var, prov)   # keep old provenance if any
+                for p in b.preds if p in R:
+                    for var, prov in OUT.get(p, {}).items():
+                        new_in.setdefault(var, prov)  # first predecessor wins
                 if new_in.keys() != IN[b].keys():
                     changed = True
                 IN[b] = new_in
                 OUT[b] = transfer_block(b, copy(new_in))
-        for b in cfg.blocks (layout order):           # final checking pass
+        for b in R:                                   # final recording pass
             state = copy(IN[b])
             for instr in b.instrs:
                 if instr is Call and TOOLS[instr.tool].privileged:
-                    for arg in instr.args:
-                        if arg is Var and arg.name in state:
-                            raise E401 at (instr.line, instr.col),
-                                  path = state[arg.name] + [sink step]
+                    record sink: label of every argument in state
                 transfer(instr, state)
+    for task, sink, arg in recorded sinks (source order):
+        if arg is untrusted:
+            raise E401 at (sink.line, sink.col), path = provenance(arg) + [sink step]
     return TaintReport(...)
 
 transfer(instr, state):
@@ -153,11 +158,118 @@ section 4.
 
 ## 4. Worked example
 
-> Filled in at M4: paste the real taint report printed by `.venv/bin/python -m agentscript compile examples/valid_report.as --phase taint` and walk through how `raw` becomes untrusted and `clean` and `summary` stay trusted.
+The taint phase runs on the CFG of the unoptimized IR. For `examples/valid_report.as` that CFG
+is (`.venv/bin/python -m agentscript compile examples/valid_report.as --phase cfg`):
+
+```
+task report(topic: string) -> bool
+  entry:
+      preds: -
+      succs: L1, L2
+      raw = call web_search(topic)             ; line 6
+      t1 = raw[0]                              ; line 7
+      clean = call sanitize(t1)                ; line 7
+      t2 = "Summarize: " + clean               ; line 8
+      summary = call llm(t2)                   ; line 8
+      t3 = call confirm("Send report?")        ; line 9
+      if t3 goto L1 else L2                    ; line 9
+  L1:
+      preds: entry
+      succs: -
+      t4 = call send_email("me@example.com", summary) ; line 10
+      return t4                                ; line 10
+  L2:
+      preds: entry
+      succs: -
+      return false                             ; line 12
+```
+
+and the taint report (`.venv/bin/python -m agentscript compile examples/valid_report.as --phase taint`) is:
+
+```
+task report  (fixed point after 2 iteration(s))
+  untrusted variables:
+    raw          line 6    from web_search (line 6)
+    t1           line 7    from web_search (line 6)
+  sanitized (trusted) results:
+    clean        line 7    clean = call sanitize(t1)  (input untrusted)
+  privileged sinks:
+    send_email line 10  ["me@example.com": trusted, summary: trusted]  OK
+```
+
+Walking through it:
+
+- **`raw` becomes untrusted.** `raw = call web_search(topic)` calls an `untrusted_result` tool, so
+  `raw` enters the state with a new chain whose source is `web_search` at line 6. `topic` is a task
+  parameter and is trusted, but that does not matter: a source's result is untrusted whatever its
+  arguments.
+- **`t1` inherits it.** `t1 = raw[0]` is an `Index`; its base `raw` is untrusted, so `t1` is
+  untrusted with the same source plus one step. This is the "one label per list" rule.
+- **`clean` is trusted.** `clean = call sanitize(t1)` calls the `sanitizer`, so `clean` is removed
+  from the state. The report lists it under "sanitized (trusted) results" and records that its
+  input was untrusted, which shows the `sanitize` call was really needed.
+- **`summary` stays trusted.** `t2 = "Summarize: " + clean` joins a constant and a trusted
+  variable, so `t2` is trusted; `summary = call llm(t2)` propagates the label of `t2`, so `summary`
+  is trusted too. Neither appears in the untrusted list.
+- **The sink is accepted.** In block `L1`, `send_email("me@example.com", summary)` is checked with
+  the block-entry state `{raw, t1}`: the constant and `summary` are both trusted, so the line is
+  `OK`.
+- **Two iterations.** In the first pass the entry states of `L1` and `L2` grow from empty to
+  `{raw, t1}` (the exit state of `entry`), so the loop runs once more; the second pass changes
+  nothing and the fixed point is reached. A task in which no block-entry set ever grows (a single
+  block, or no untrusted data at all) needs only one pass. The
+  `tainted_lines` in the artifact data are `[6, 7]`, the lines the editor highlights.
 
 ## 5. Errors this phase catches
 
-> Filled in at M4: paste the exact E401 diagnostic and its path printed by `.venv/bin/python -m agentscript compile examples/taint_injection.as` (expected E401 at 9:14).
+| Code | Demo file | When |
+| --- | --- | --- |
+| **E401** | `examples/taint_injection.as` | An argument of a `privileged` tool (`send_email`, `delete_file`) may hold untrusted data that never passed through `sanitize`. |
+
+`examples/taint_injection.as` is `valid_report.as` without the `sanitize` line: line 7 is
+`let summary = llm("Summarize: " + raw[0]);`. The end of the output of
+`.venv/bin/python -m agentscript compile examples/taint_injection.as` (the earlier phase dumps are
+trimmed):
+
+```
+...
+== taint ==
+task report  (fixed point after 2 iteration(s))
+  untrusted variables:
+    raw          line 6    from web_search (line 6)
+    t1           line 7    from web_search (line 6)
+    t2           line 7    from web_search (line 6)
+    summary      line 7    from web_search (line 6)
+  sanitized (trusted) results:
+    (none)
+  privileged sinks:
+    send_email line 9  ["me@example.com": trusted, summary: untrusted from web_search]  VIOLATION
+
+E401 [taint] 9:14: untrusted data from web_search (line 6) reaches privileged tool 'send_email' (line 9), argument 2; pass it through sanitize first
+    6:15  raw = call web_search(topic)  <- web_search returns untrusted data
+    7:42  t1 = raw[0]
+    7:37  t2 = "Summarize: " + t1
+    7:19  summary = call llm(t2)
+    9:14  t4 = call send_email("me@example.com", summary)  <- privileged sink
+
+== diagnostics ==
+E401 [taint] 9:14: untrusted data from web_search (line 6) reaches privileged tool 'send_email' (line 9), argument 2; pass it through sanitize first
+    6:15  raw = call web_search(topic)  <- web_search returns untrusted data
+    7:42  t1 = raw[0]
+    7:37  t2 = "Summarize: " + t1
+    7:19  summary = call llm(t2)
+    9:14  t4 = call send_email("me@example.com", summary)  <- privileged sink
+compilation failed
+```
+
+The diagnostic is at 9:14, the `send_email` call, as `examples/manifest.json` expects. The path
+reads top to bottom from source to sink: `web_search` at 6:15 produces untrusted data, the index
+`raw[0]` at 7:42 and the concatenation at 7:37 pass it on, `llm` at 7:19 propagates it into
+`summary`, and `summary` is argument 2 of `send_email` at 9:14. The column of each step is the
+column of the source construct that produced that IR instruction. Even on failure the Taint tab
+shows the full report (with the `VIOLATION` line), because the error carries the report as its
+artifact. The fix is the one the message suggests: `let clean = sanitize(raw[0]);` and pass
+`clean` to `llm`, which is exactly `valid_report.as`.
 
 ## 6. Design decisions and limitations
 
@@ -188,4 +300,11 @@ section 4.
 
 ## 7. Where it lives in the code
 
-> Filled in at M4: list `agentscript/taint.py` with `analyze_taint(cfgs)`, `TaintReport` and its `artifact()`, the transfer function and the fixed-point loop, how `agentscript/pipeline.py` calls it, and the tests in `tests/test_taint.py`.
+| File | What is there |
+| --- | --- |
+| `agentscript/taint.py` | The whole phase. `analyze_taint(cfgs) -> TaintReport` runs `_check_task` on every CFG, then `_violation` scans the recorded sinks and raises the first E401 (`make_error`) with the full report attached as `err.artifact`. `solve(cfg)` is the round-robin fixed-point loop over the reachable blocks, returning the block-entry states and the pass count; `_meet` is the union at joins (first predecessor's provenance wins). `transfer(instr, state)` is the transfer function, with `_call_result` handling the tool flags (`untrusted_result`, `propagates_taint`, everything else trusted). `_record_call` records `sanitize` results and privileged sinks. Data classes: `TaintInfo` (provenance), `UntrustedVar`, `SanitizedResult`, `SinkArg`, `SinkCheck`, `TaskTaint`, and `TaintReport` with `artifact()` (`{text, data}`) and `tainted_lines()`. |
+| `agentscript/tools.py` | `TOOLS`, the fixed table of tool flags the analysis reads (`untrusted_result`, `propagates_taint`, `sanitizer`, `privileged`). |
+| `agentscript/cfg.py` | `reachable(cfg)`, used to skip unreachable blocks. |
+| `agentscript/ir.py` | `format_instr`, `format_operand`, `operands`, `defined_vars`: the IR helpers used for the path notes and the transfer function. |
+| `agentscript/pipeline.py` | Stage `taint`: `res.taint = analyze_taint(res.cfgs)` on the unoptimized CFGs, right after `build_cfg` and before `analyze_approval`; the artifact goes into `phases["taint"]`. On a `CompileError` the pipeline stores `err.artifact` as the Taint tab, so the report is visible next to the E401. |
+| `tests/test_taint.py` | The two demos (`test_taint_injection_example_reports_e401_with_path`, `test_valid_report_passes_raw_untrusted_clean_trusted`), the manifest examples, determinism, one test per transfer rule (index, concatenation, `llm`, `sanitize`, `read_file`, copies, both `send_email` arguments, `delete_file` as a sink), joins and provenance from the first predecessor, `repeat` loops reaching a fixed point, no implicit flows, unreachable code, and a violation in a later task. |

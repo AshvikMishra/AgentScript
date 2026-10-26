@@ -51,8 +51,10 @@ block is the **true** successor.
 order), and `entry` (always `"entry"`, the first block).
 
 **Helpers** used by every later phase: `defined_var(instr)` (the variable an instruction writes,
-if any), `used_vars(instr)` and `operands(instr)` (what it reads), `count_instructions(cfg)` and
-`count_calls(cfg)` (for the optimizer's before/after numbers).
+if any) and `defined_vars(instr)` (the same as a list, which also covers `ParallelCalls`),
+`used_vars(instr)` and `operands(instr)` (what it reads), `format_instr` and `format_function`
+(the text forms), `count_instructions(cfg)` and `count_calls(cfg)` (for the optimizer's
+before/after numbers). `TERMINATORS` is the tuple `(Jump, Branch, Return)`.
 
 ## 3. Algorithm
 
@@ -84,19 +86,23 @@ The statement rules:
 | `return e` | the code for `e`, then `return <operand>` |
 | `e;` (expression statement) | the code for `e`; a call's result goes into a fresh temporary that nothing reads |
 
-`if (c) { A } else { B }` (schematic; label numbers are assigned in creation order):
+`if (c) { A } else { B }` (schematic; the labels `Lthen`, `Lelse` (only with an else block)
+and `Lend` are numbered in that order, before the code for `c` is emitted):
 
 ```
         <code for c, giving operand c>
         if c goto Lthen else Lelse        ; without an else block: if c goto Lthen else Lend
 Lthen:
         <code for A>
-        goto Lend
+        goto Lend                         ; left out when A ends with a return
 Lelse:                                    ; only when there is an else block
         <code for B>
-        goto Lend
-Lend:
+        goto Lend                         ; left out when B ends with a return
+Lend:                                     ; only when some edge jumps to it
 ```
+
+So an `if`/`else` whose branches both return has no `Lend` label at all, and an `if` without
+`else` always has one (its false edge goes there).
 
 `repeat N { A }` (schematic; `tK`, `tN`, `tC` stand for fresh temporaries):
 
@@ -119,7 +125,9 @@ requires. The loop counter is the only kind of IR variable written by two instru
 
 **Numbering.** Temporaries are `t1, t2, ...` and labels `L1, L2, ...`, both numbered per task
 in the order they are created, so every task starts again at `t1` and `L1`. The numbering is
-deterministic, which keeps the golden test files stable.
+deterministic, which keeps the golden test files stable. A user variable or parameter may be
+named like a temporary (`let t2 = ...`); such names are reserved for the task and the temporary
+counter skips them, so a temporary never overwrites a user variable.
 
 **The `then` block always gets its own label**, even though it directly follows the `Branch`.
 A `Branch` needs a named target for its true edge, and the approval analysis defines a guard
@@ -166,6 +174,7 @@ build_cfg(fn):
             if current already ends in a terminator:          # code after goto/branch/return
                 close current; current = new block "U<k>"     # generated label, unreachable
             append instr to current
+    if current has no terminator: append Jump(current.label)   # falls off the end: self-loop
     close current
     for each block b:
         b.succs = [target] for Jump; [if_true, if_false] for Branch; [] for Return
@@ -180,20 +189,148 @@ The resulting invariants, which every later phase relies on:
 | Every block ends with exactly one terminator; no `Label` appears inside a block. | Successors can be read directly from the last instruction. |
 | A block that would fall through gets an explicit `Jump`. | Block order no longer matters for meaning, so the optimizer may delete blocks and codegen may lay them out freely. |
 | Code after a terminator with no label gets a generated label `U1, U2, ...`. | Statements after a `return` are legal; they form blocks with no predecessors, which the optimizer's unreachable-block elimination removes. |
+| A last block that would fall off the end of the listing gets `goto <itself>`. | Only possible in unreachable code of a valid program (a task always returns), but it keeps "exactly one terminator" true for every block. |
+| `preds` list each predecessor once, in layout order. | A `Branch` with two identical targets still gives one edge in `preds`; dominators and printing stay deterministic. |
 | `blocks` keeps layout order. | Code generation lays out blocks in this order and can drop a `Jump` to the next block. |
 
-`cfg.py` also provides the graph algorithms the later stages share: `reachable(cfg)` (labels
-reachable from `entry`), `dominators(cfg)` (the simple iterative algorithm, used by the approval
-analysis, see [07](07-approval-analysis.md)), and the printers `format_cfg`, `cfg_to_dict` and
-`cfg_to_mermaid` (the CFG tab draws the Mermaid graph).
+`cfg.py` also provides the graph algorithms the later stages share: `successors(block)` and
+`link_blocks(cfg)` (recompute `succs` and `preds` after the optimizer changes blocks),
+`reachable(cfg)` (labels reachable from `entry`), `dominators(cfg)` (the simple iterative
+algorithm over the reachable blocks, used by the approval analysis, see
+[07](07-approval-analysis.md)) and `immediate_dominators(cfg)`, and the printers `format_cfg`,
+`cfg_to_dict` and `cfg_to_mermaid` (the CFG tab draws the Mermaid graph; `format_cfg` and
+Mermaid mark blocks that are not reachable as `(unreachable)`).
 
 ## 4. Worked example
 
-> Filled in at M2: paste the real IR listing printed by `.venv/bin/python -m agentscript compile examples/valid_report.as --phase ir` and the CFG printed by `.venv/bin/python -m agentscript compile examples/valid_report.as --phase cfg`, and point out where `clean = call sanitize(...)` writes directly into `clean`, the `Branch` on the `confirm` result, and the guard block that is its true successor.
+The input is `examples/valid_report.as` (task `report`, see
+[04](04-semantic-analysis.md#4-worked-example)).
+
+**The linear IR.** `.venv/bin/python -m agentscript compile examples/valid_report.as --phase ir`:
+
+```
+task report(topic: string) -> bool
+      raw = call web_search(topic)             ; line 6
+      t1 = raw[0]                              ; line 7
+      clean = call sanitize(t1)                ; line 7
+      t2 = "Summarize: " + clean               ; line 8
+      summary = call llm(t2)                   ; line 8
+      t3 = call confirm("Send report?")        ; line 9
+      if t3 goto L1 else L2                    ; line 9
+  L1:
+      t4 = call send_email("me@example.com", summary) ; line 10
+      return t4                                ; line 10
+  L2:
+      return false                             ; line 12
+```
+
+What to look at:
+
+- `let raw = web_search(topic);` and `let clean = sanitize(raw[0]);` are `let`s of calls, so the
+  `Call` writes **directly into `raw` and `clean`**: there is no `t = call ...; clean = t` pair.
+  Only the nested expressions get temporaries: `t1 = raw[0]` (the index inside the argument) and
+  `t2 = "Summarize: " + clean`.
+- The `if` condition `confirm("Send report?")` is not a `let`, so its result goes into the
+  temporary `t3`, and the `Branch` tests it: `if t3 goto L1 else L2`.
+- The labels were created in the order `then` (`L1`), `end` (`L2`); there is no `else` block, so
+  the false edge goes straight to `L2`. The `then` block ends with `return t4`, so no `goto L2`
+  follows it.
+- Every instruction keeps its source line (`; line 7` and so on).
+
+**The CFG.** `.venv/bin/python -m agentscript compile examples/valid_report.as --phase cfg`:
+
+```
+task report(topic: string) -> bool
+  entry:
+      preds: -
+      succs: L1, L2
+      raw = call web_search(topic)             ; line 6
+      t1 = raw[0]                              ; line 7
+      clean = call sanitize(t1)                ; line 7
+      t2 = "Summarize: " + clean               ; line 8
+      summary = call llm(t2)                   ; line 8
+      t3 = call confirm("Send report?")        ; line 9
+      if t3 goto L1 else L2                    ; line 9
+  L1:
+      preds: entry
+      succs: -
+      t4 = call send_email("me@example.com", summary) ; line 10
+      return t4                                ; line 10
+  L2:
+      preds: entry
+      succs: -
+      return false                             ; line 12
+```
+
+Three blocks: the listing is cut before `L1:` and before `L2:`. `entry` ends with the `Branch`
+on the `confirm` result `t3`, so its `succs` are `L1, L2` in the order `[if_true, if_false]`.
+**`L1` is the guard block**: it is the true successor of a branch on a confirm value, and it
+contains exactly the code under `if (confirm(...)) { ... }`, the `send_email` call. That is why
+`then` blocks always get their own label (3.1). `L1` and `L2` end in `return`, so they have no
+successors.
+
+The CFG artifact (`--json`, `phases.cfg.data.tasks[0]`) also carries the Mermaid graph the CFG
+tab draws, with `T` and `F` on the branch edges, and the dominator sets:
+
+```
+flowchart TD
+  B0["entry<br/>raw = call web_search(topic)<br/>t1 = raw[0]<br/>clean = call sanitize(t1)<br/>t2 = #quot;Summarize: #quot; + clean<br/>summary = call llm(t2)<br/>t3 = call confirm(#quot;Send report?#quot;)<br/>if t3 goto L1 else L2"]
+  B1["L1<br/>t4 = call send_email(#quot;me@example.com#quot;, summary)<br/>return t4"]
+  B2["L2<br/>return false"]
+  B0 -->|T| B1
+  B0 -->|F| B2
+```
+
+```
+{'entry': ['entry'], 'L1': ['L1', 'entry'], 'L2': ['L2', 'entry']}
+```
+
+A loop for comparison: `runtime_budget.as` (`repeat times { let r = web_search(topic); }`),
+from `.venv/bin/python -m agentscript compile examples/runtime_budget.as --phase ir`, shows the
+`repeat` schematic of 3.1 with `t1` the counter, `t2` the count and `t3` the test:
+
+```
+task poll(topic: string, times: int) -> int
+      t1 = 0                                   ; line 6
+      t2 = times                               ; line 6
+      goto L1                                  ; line 6
+  L1:
+      t3 = t1 < t2                             ; line 6
+      if t3 goto L2 else L3                    ; line 6
+  L2:
+      r = call web_search(topic)               ; line 7
+      t1 = t1 + 1                              ; line 6
+      goto L1                                  ; line 6
+  L3:
+      return times                             ; line 9
+```
+
+In its CFG (`--phase cfg`) the back edge shows up as `L2` in the `preds` of the loop head:
+
+```
+  L1:
+      preds: entry, L2
+      succs: L2, L3
+```
 
 ## 5. Errors this phase catches
 
-> Filled in at M2: state that IR generation and CFG construction report no user error codes (E101 to E306 are all caught by stages 1 to 3, and `lower()` assumes a valid AST); list any internal assertion that `agentscript/irgen.py` or `agentscript/cfg.py` raises and the test in `tests/test_irgen.py` or `tests/test_cfg.py` that covers it.
+None. IR generation and CFG construction report no user error codes: E101 to E306 are all
+caught by stages 1 to 3, and `lower()` assumes a semantically valid AST (the pipeline only
+calls it after `analyze()` has succeeded).
+
+Internal checks that can fire only on an AST that skipped semantic analysis, or on a compiler
+bug:
+
+| Where | Raises | Covered by |
+| --- | --- | --- |
+| `irgen._TaskLowerer.resolve` | `KeyError("irgen: undeclared name ... (AST not semantically valid)")` | `tests/test_irgen.py::test_every_parseable_example_lowers` lowers the parsed (not checked) `sem_undeclared.as` and expects `KeyError`; `tests/test_cfg.py::_lowerable_examples` skips files that raise it. |
+| `irgen._TaskLowerer.lower_stmt` / `lower_expr` | `TypeError("irgen: unknown statement/expression ...")` for an AST node type it does not know | no test (cannot happen with the parser's node types) |
+| `ir.format_instr` | `TypeError("unknown instruction ...")` | no test |
+
+`agentscript/cfg.py` raises nothing of its own. If any of these did happen inside the pipeline,
+`pipeline.py` turns the exception into an internal `E000` diagnostic
+(`internal compiler error: <type>: <message>`) instead of crashing the API.
 
 ## 6. Design decisions and limitations
 
@@ -221,4 +358,34 @@ Limitations:
 
 ## 7. Where it lives in the code
 
-> Filled in at M2: list `agentscript/irgen.py` (`lower(agent)` and its expression, statement and renaming helpers), `agentscript/cfg.py` (`build_cfg`, `reachable`, `dominators`, `format_cfg`, `cfg_to_dict`, `cfg_to_mermaid`), the data structures in `agentscript/ir.py`, and the tests in `tests/test_irgen.py` and `tests/test_cfg.py`.
+| File | Main names |
+| --- | --- |
+| `agentscript/ir.py` | Operands `Const`, `Var` (`Operand = Const \| Var`); instructions `Instr`, `Assign`, `BinOp`, `Index`, `Call`, `Jump`, `Branch`, `Return`, `Label`, `ParallelCalls` (M7); `TERMINATORS`; containers `IRFunction`, `BasicBlock` (with the `terminator` property), `CFG`; helpers `defined_var`, `defined_vars`, `operands`, `used_vars`, `format_operand`, `format_instr`, `format_function`, `count_instructions`, `count_calls`. |
+| `agentscript/irgen.py` | `lower(agent) -> list[IRFunction]` (one per task); `ir_artifact(fns)` (the IR tab `{text, data}`) and `instr_to_dict`; `_declared_names` (finds user names like `t3` to reserve); `_TaskLowerer`, one per task, with `lower`, `emit`, `new_temp`, `new_label`, the renaming helpers `declare` (gives `name`, `name.2`, ...) and `resolve` (scope chain lookup), `ends_with_return`, the statement lowering `lower_block`, `lower_stmt`, `lower_let`, `lower_if`, `lower_repeat`, and the expression lowering `lower_expr(expr, dst)`. |
+| `agentscript/cfg.py` | `build_cfg(fn) -> CFG`; `successors`, `link_blocks`; `reachable`, `dominators`, `immediate_dominators`; printers `format_cfg`, `cfg_to_dict`, `cfg_to_mermaid` (with `_mermaid_escape`) and `cfg_artifact(cfgs)` (the CFG tab `{text, data}`, including Mermaid and dominator sets per task). |
+| `agentscript/pipeline.py` | Calls `lower(res.agent)` for phase `ir` and `build_cfg` per function for phase `cfg`, right after `analyze()`. |
+
+Tests:
+
+- `tests/test_irgen.py`: exact listings of the examples (`test_valid_report_exact_listing`,
+  `test_valid_report_columns`, `test_valid_report_operands`,
+  `test_runtime_budget_repeat_variable`, `test_valid_cleanup_branches_on_let_variable`,
+  `test_optimize_demo_listing`); the `if` shapes (`test_if_else_both_return_has_no_end_label`,
+  `test_if_else_falls_through_to_end`, `test_if_without_else_and_then_returning`,
+  `test_nested_ifs_label_numbering`, `test_nested_if_both_return_suppresses_outer_goto`, ...);
+  loops (`test_repeat_literal`, `test_repeat_variable_count_and_nesting`); renaming and
+  numbering (`test_sibling_scope_names_are_renamed`, `test_numbering_restarts_per_task`,
+  `test_user_variable_named_like_a_temp_is_not_clobbered`); expressions and statements
+  (`test_let_of_name_and_literal_emits_assign`, `test_precedence_and_left_associativity`,
+  `test_code_after_return_is_kept`, ...); `test_ir_artifact_shape`,
+  `test_lowering_is_deterministic` and `test_every_parseable_example_lowers`.
+- `tests/test_cfg.py`: block splitting (`test_valid_report_blocks`, `test_repeat_loop_blocks`,
+  `test_fallthrough_into_label_gets_explicit_jump`,
+  `test_code_after_return_becomes_unreachable_u_block`, `test_trailing_open_block_gets_self_jump`,
+  `test_branch_with_identical_targets_lists_pred_once`, `test_build_cfg_does_not_mutate_listing`,
+  ...); dominators (`test_dominators_diamond`, `test_dominators_loop`,
+  `test_dominators_nested_if`, `test_dominators_guard_block_of_valid_cleanup`,
+  `test_dominators_skip_unreachable_blocks`, ...); printers (`test_format_cfg_valid_report`,
+  `test_cfg_to_dict`, `test_mermaid_contains_every_block_and_branch_labels`,
+  `test_mermaid_escapes_quotes_and_brackets`, `test_cfg_artifact_shape`, ...); and
+  `test_every_example_builds_a_well_formed_cfg` over every lowerable example.

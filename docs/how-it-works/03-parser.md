@@ -7,7 +7,7 @@
 | Input | The token list from the lexer, ending in `EOF`. |
 | Output | The abstract syntax tree (AST): one `Agent` node at the root. Also a `{text, data}` artifact for the AST tab (an indented tree as text, the node dictionaries as data). |
 | Place in the pipeline | Stage 2 of 10, the second classic phase. The AST goes to semantic analysis (stage 3), which fills in each expression's type. |
-| Errors | E201 "expected X, found Y". Only the first syntax error is reported; there is no error recovery. |
+| Errors | E201 "expected X, found Y", including "expected at most 1000 levels of nesting" for programs nested too deeply. Only the first syntax error is reported; there is no error recovery. |
 
 The parser checks that the tokens follow the grammar and builds a tree that later phases can
 walk without caring about punctuation, precedence or parentheses.
@@ -102,14 +102,15 @@ which makes every binary operator left-associative: `a - b - c` parses as `(a - 
 indexing is a loop too, so `xs[0][1]` is `(xs[0])[1]`.
 
 ```
-parse_agent():
+parse_program():
     expect("agent"); name = expect(IDENT); expect("{")
     permits = []
     while peek() is "permit": permits.append(parse_permit())
-    budget = parse_budget()                         # E201 if the next token is not "budget"
-    tasks = [parse_task()]
+    budget = parse_budget()      # E201 "expected 'permit' or 'budget'" if the next token is neither
+    tasks = [parse_task()]       # E201 "expected 'task'" if there is none
     while peek() is "task": tasks.append(parse_task())
-    expect("}"); expect(EOF)
+    expect("}")                  # E201 "expected 'task' or '}'"
+    expect(EOF)
     return Agent(name, permits, budget, tasks)
 
 parse_statement():
@@ -164,13 +165,158 @@ else:
 reported just after the `)` that ends line 6, at 6:30, which is where the user has to type the
 `;`.
 
+The "expected X" part is usually the token kind (`';'`, `identifier`), but some call sites name
+what makes sense to the user: `agent name`, `task name`, `parameter name`, `tool name`, `type`,
+`expression`, `integer or identifier` (repeat count), `',' or ')'` (argument and parameter
+lists), `',' or ';'` (permit). The "found Y" part shows the token: `'return'`,
+`identifier 'x'`, `integer 42`, `string "abc"` or `end of file`.
+
+**Nesting limit.** Later phases walk the AST recursively, so the parser bounds nesting at
+`MAX_NESTING = 1000`. While parsing, every block and every expression (each `(`, `[` index and
+call argument opens a new one) increases a depth counter; going past 1000 is E201 "expected at
+most 1000 levels of nesting, found <token>". After parsing, `check_nesting()` walks the finished
+AST iteratively and reports the first node deeper than 1000 statement/block/expression levels
+(for example a chain of 5000 `+`, which is left-deep but needs no parentheses) as E201 "expected
+at most 1000 levels of nesting, found a deeper expression".
+
 ## 4. Worked example
 
-> Filled in at M1: paste the real AST tree printed by `.venv/bin/python -m agentscript compile examples/valid_report.as --phase ast` (at least the `Let clean` subtree on line 7 and the `If` on line 9), and point out how `"Summarize: " + clean` became a `Binary` node.
+Input: `examples/valid_report.as` (the full listing with line numbers is in
+[02-lexer.md](02-lexer.md), section 4). Output of
+`.venv/bin/python -m agentscript compile examples/valid_report.as --phase ast`:
+
+```
+Agent Assistant @1:1
+  Permit [web_search, llm, sanitize, send_email, confirm] @2:3
+  budget:
+    Budget 5 @3:3
+  Task report return_type=bool @5:3
+    Param topic declared_type=string @5:15
+    body:
+      Block @5:38
+        Let raw @6:5
+          Call web_search : list<string> @6:15
+            Name topic : string @6:26
+        Let clean @7:5
+          Call sanitize : string @7:17
+            Index : string @7:29
+              Name raw : list<string> @7:26
+              IntLit 0 : int @7:30
+        Let summary @8:5
+          Call llm : string @8:19
+            Binary + : string @8:37
+              StrLit 'Summarize: ' : string @8:23
+              Name clean : string @8:39
+        If @9:5
+          Call confirm : bool @9:9
+            StrLit 'Send report?' : string @9:17
+          then_block:
+            Block @9:34
+              Return @10:7
+                Call send_email : bool @10:14
+                  StrLit 'me@example.com' : string @10:25
+                  Name summary : string @10:43
+        Return @12:5
+          BoolLit False : bool @12:12
+```
+
+Each line is one node, its main fields, and `@line:col`. The `: type` after each expression is
+not produced by the parser: the pipeline re-renders the AST tab after semantic analysis so
+that it shows the static types (straight after parsing every `type` field is still empty).
+
+What to notice:
+
+- **Punctuation is gone.** No `;`, `,`, `->` or parentheses appear; `let raw = web_search(topic);`
+  is just `Let raw` with one child, the `Call`.
+- **Calls by syntax.** `web_search(topic)` is a `Call` because the `IDENT` is followed by `(`;
+  `topic` on its own is a `Name`. The call sits at the tool name (6:15), the same position the
+  lexer gave the `web_search` token.
+- **Postfix indexing.** In `sanitize(raw[0])` (line 7) the argument is an `Index` node with
+  `base = Name raw` and `index = IntLit 0`, positioned at the `[` (7:29), not at `raw` (7:26).
+- **Binary node.** `"Summarize: " + clean` on line 8 went through the expression levels
+  `equality -> relational -> additive`: `parse_additive` read the `StrLit` as its left operand,
+  saw `+`, read `Name clean` as the right operand, and folded them into `Binary +`. The node is
+  positioned at the operator (8:37), its two children at their own tokens (8:23 and 8:39). The
+  `StrLit` holds the unescaped value `'Summarize: '`, without the source quotes.
+- **If with no else.** The `If` on line 9 has a `Call confirm` as its condition and a
+  `then_block`; there is no `else_block` line because the field is `None`.
+- **Blocks keep their `{`.** `Block @5:38` is the task body's `{`; its closing `}` (13:3) is
+  stored in `end_line`/`end_col` and is not printed in the tree, but E304 uses it.
 
 ## 5. Errors this phase catches
 
-> Filled in at M1: paste the exact E201 diagnostic printed by `.venv/bin/python -m agentscript compile examples/syntax_missing_semicolon.as` (expected 6:30), and one more E201 from a missing `}` if a test covers it.
+| Code | Demo file (`examples/manifest.json`) | Expected location |
+| --- | --- | --- |
+| E201 syntax error | `syntax_missing_semicolon.as` | 6:30 |
+
+**Missing semicolon.** `examples/syntax_missing_semicolon.as`:
+
+```
+     5	  task find(topic: string) -> list<string> {
+     6	    let a = web_search(topic)
+     7	    return a;
+```
+
+`.venv/bin/python -m agentscript compile examples/syntax_missing_semicolon.as` prints the token
+listing (the lexer succeeded) and then the diagnostic:
+
+```
+== tokens ==
+  1:1   AGENT      agent
+...
+  6:5   LET        let
+  6:9   IDENT      a
+  6:11  ASSIGN     =
+  6:13  IDENT      web_search
+  6:23  LPAREN     (
+  6:24  IDENT      topic
+  6:29  RPAREN     )
+  7:5   RETURN     return
+  7:12  IDENT      a
+  7:13  SEMI       ;
+...
+
+== diagnostics ==
+E201 [parser] 6:30: expected ';', found 'return'
+compilation failed
+```
+
+The token found is `return` at 7:5, but it is on a later line than the previous token `)` at
+6:29, so the location rule reports 6:29 + len(")") = **6:30**, the end of line 6.
+
+**Missing closing brace.** Covered by `test_missing_closing_brace_at_eof` in
+`tests/test_parser.py` (no demo file). The same program saved as a scratch file `missing_brace.as`:
+
+```
+     1	agent A {
+     2	  budget calls = 1;
+     3	  task t() -> int {
+     4	    return 1;
+     5	  }
+```
+
+`.venv/bin/python -m agentscript compile missing_brace.as` ends with:
+
+```
+== diagnostics ==
+E201 [parser] 5:4: expected 'task' or '}', found end of file
+compilation failed
+```
+
+After the task, the parser accepts another `task` or the agent's `}`; it finds `EOF` on line 6,
+so the error goes right after the task's `}` on line 5.
+
+**Nesting limit.** A `return` of 1001 nested parentheses (`return ((((...1...))));` on line 4,
+scratch file) gives:
+
+```
+== diagnostics ==
+E201 [parser] 4:1011: expected at most 1000 levels of nesting, found '('
+compilation failed
+```
+
+`parse_expr` is entered once for the return value and once per `(`, so the 1000th `(` (column
+12 + 999 = 1011) is the one refused.
 
 ## 6. Design decisions and limitations
 
@@ -196,4 +342,32 @@ Limitations:
 
 ## 7. Where it lives in the code
 
-> Filled in at M1: list `agentscript/parser.py` with its main functions (`parse(tokens)`, the per-rule `parse_*` functions, `expect` and the E201 location helper), the node definitions in `agentscript/ast_nodes.py`, and the tests in `tests/test_parser.py`.
+**`agentscript/parser.py`**
+
+| Name | What it is |
+| --- | --- |
+| `parse(tokens)` | public entry point: `Parser(tokens).parse_program()`, then `check_nesting()`; returns the `Agent` or raises `CompileError` E201. |
+| `Parser` | the recursive-descent parser. Holds `tokens`, `pos` and the nesting `depth`; the constructor rejects a token list that does not end in `EOF`. |
+| `peek()`, `check(*kinds)`, `advance()`, `expect(kind, what=None)` | token helpers; `advance()` never steps past `EOF`; `expect` raises through `error()`. |
+| `error(expected)` | builds the E201 diagnostic and applies the location rule (found token, or just after the previous token when the found token is on a later line). |
+| `describe_kind()`, `describe_token()` | the "expected X" and "found Y" wording. |
+| `parse_program`, `parse_permit` (+ `_name_ref`), `parse_budget`, `parse_task`, `parse_param`, `parse_type` | declaration rules. |
+| `parse_block` (+ `_block`), `parse_statement`, `parse_let`, `parse_if`, `parse_repeat`, `parse_return` | statement rules; `parse_statement` dispatches on `let`/`if`/`repeat`/`return`, otherwise an expression statement. |
+| `parse_expr`, `parse_equality`, `parse_relational`, `parse_additive`, `parse_term`, `parse_postfix`, `parse_primary` (+ `_call_args`) | expression rules, one per precedence level; the four binary levels share `_binary_level(ops, operand)`. |
+| `enter()`, `MAX_NESTING`, `check_nesting(agent)` | the nesting bound (during parsing and on the finished AST). |
+
+**`agentscript/ast_nodes.py`**: the node dataclasses (`Agent`, `Permit`, `NameRef`, `Budget`,
+`Task`, `Param`, `Block`, `Let`, `If`, `Repeat`, `Return`, `ExprStmt`, `IntLit`, `StrLit`,
+`BoolLit`, `Name`, `Call`, `Index`, `Binary`, with the base classes `Expr` and `Stmt`), plus
+`ast_to_dict()` and `format_ast()`. `Agent.permitted_tools()` flattens the permit lists.
+
+**`agentscript/pipeline.py`** runs the parser as stage 2 of `_run_stages()`:
+`res.agent = parse(res.tokens)`, then
+`phases["ast"] = {"text": format_ast(res.agent), "data": ast_to_dict(res.agent)}`; after
+semantic analysis the `ast` artifact is rendered again so it shows the expression types.
+
+**`tests/test_parser.py`** covers the AST shape and positions of `valid_report.as`,
+`format_ast`/`ast_to_dict`, every statement form, types, precedence and associativity, node
+positions, many E201 cases (missing `;`, `)`, `}`, budget order, trailing tokens, bad repeat
+counts, unsupported constructs), the location rule, the nesting limit, and every example in
+`examples/manifest.json` (`test_examples_parse_per_manifest`).
