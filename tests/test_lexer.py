@@ -281,11 +281,11 @@ def test_examples_lex_per_manifest(entry: dict):
 # ------------------------------------------------------------------ robustness
 
 
-@pytest.mark.parametrize("text", ['"a\ud800b"', '"\\\udfff"'])
-def test_lone_surrogate_in_string_is_e102(text):
-    code, line, col, message = lex_error("let s = " + text + ";")
-    assert (code, line) == ("E102", 1)
-    assert col == 9 + text.index("\\u"[0] if False else next(c for c in text if 0xD800 <= ord(c) <= 0xDFFF))
+@pytest.mark.parametrize("text, col", [('"a\ud800b"', 11), ('"\\\udfff"', 11)])
+def test_lone_surrogate_in_string_is_e102(text, col):
+    # reported at the surrogate itself, also when it follows a backslash
+    code, line, got_col, message = lex_error("let s = " + text + ";")
+    assert (code, line, got_col) == ("E102", 1, col)
     assert message.startswith("illegal character")
 
 

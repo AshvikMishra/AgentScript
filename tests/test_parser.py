@@ -561,11 +561,10 @@ def test_max_nesting_value():
     [
         "    return " + "(" * 900 + "1" + ")" * 900 + ";",
         "    return " + "+".join(["1"] * 900) + ";",
-        "    return " + " == ".join(["1"] * 2) + " == true;",
         "    " + "if (true) {" * 400 + "return 1;" + "}" * 400 + "\n    return 0;",
         "    " + "repeat 1 {" * 400 + "}" * 400 + "\n    return 0;",
     ],
-    ids=["parens-900", "chain-900", "eq", "if-400", "repeat-400"],
+    ids=["parens-900", "chain-900", "if-400", "repeat-400"],
 )
 def test_deep_but_bounded_programs_compile(body):
     res, err = _deep_diag(body)

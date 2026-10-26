@@ -139,6 +139,7 @@ run(program, task, args, registry):
 | Code | When | Why it exists |
 | --- | --- | --- |
 | E601 budget exceeded | Before executing the call that would make `calls_used` exceed `budget`. The call is not made; the log keeps the calls before it. | The static count (E306) cannot bound `repeat x` with a runtime `x` (warning W306). `examples/runtime_budget.as` has budget 3 and `times = 5`, so the 4th call trips the guard at 7:15. |
+| E601 step limit | After `MAX_STEPS` = 1,000,000 executed instructions (message "execution step limit ... reached"). | The call budget does not bound call-free loops (`repeat 999999999 { }`), so without this cap one run could hold a server worker for hours. |
 | E602 tool not permitted | Before a `CALL` to a tool not in `program.permits`. | Defence in depth: E305 already rejects such programs, so compiled code never trips it; it is tested with hand-made bytecode in `tests/test_vm.py`. |
 | E603 index out of range | `INDEX` with `i < 0` or `i >= len`. | Python would silently accept a negative index (`xs[-1]`); the language does not. `examples/runtime_index.as` reads `results[9]` of a three-element mock result (7:19). |
 | E604 invalid run request | Unknown task, missing or extra argument, wrong JSON type. | The run arguments come from outside the compiler (CLI `--args`, `/run` JSON), so they are the one input the type checker never saw. `true` is rejected for an `int` parameter, because Python's `bool` is a subclass of `int`. |

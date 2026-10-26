@@ -55,7 +55,8 @@ dependency_graph(body):
     for j, b in enumerate(body):
         deps[b] = { a for a in body[:j]
                     if writes(a) & reads(b) or reads(a) & writes(b) or writes(a) & writes(b)
-                    or (a is Call and b is Call and (TOOLS[a.tool].barrier or TOOLS[b.tool].barrier)) }
+                    or (a is Call and b is Call and (TOOLS[a.tool].barrier or TOOLS[b.tool].barrier))
+                    or (a is Call and b is Index) or (a is Index and b is Call) }
 ```
 
 The `ready` list is computed once per round, before any of its calls is marked done, so two calls
@@ -66,15 +67,18 @@ graph is acyclic because edges only point forward), so the loop terminates.
 
 ```
 argv_k .. argv_1 = pop n_k, ..., n_1 values      # restore each call's argument order
-for each call: if tool not in permits: raise E602 at that call
-if calls_used + k > budget: raise E601 at the first call of the round that would exceed it
-results = run registry.call(tool_i, argv_i) for all i concurrently (thread pool), wait for all
-push results in order; log each call with the same round number, in program order
+f = first i (in program order) with calls_used + i > budget (E601) or tool_i not in permits (E602)
+results = run registry.call(tool_i, argv_i) for i < f concurrently (thread pool), wait for all
+push results in order; log each call with the same round number, in program order, at its own line
+if f exists: raise its E601 / E602 at call f's own (line, col)
 ```
 
-The permission and budget guards check the whole round before any call starts, so a round either
-runs completely or not at all and the budget is never exceeded. (IMPLEMENTATION_PLAN.md M7 step 5:
-check `calls_used + k <= budget`, E601 at the first call that would exceed.) A thread pool from the
+The guards are checked for each call of the round in program order, so a run that stops inside a
+round makes exactly the calls, and stops at exactly the call, that the unscheduled program would:
+the budget is never exceeded and switching M7 on never changes the call log of a failing run.
+Codegen keeps each member call's `(line, col)` in `CALL_PARALLEL`'s `arg2` for this and for the
+call log. An `Index` (which may fail with E603) is ordered against every call in the block for
+the same reason. A thread pool from the
 standard library (`concurrent.futures`) is enough: the calls are I/O-bound. The log is written in
 program order, not completion order, so runs stay deterministic.
 

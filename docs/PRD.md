@@ -166,7 +166,7 @@ Why so small: every construct must flow through all ten stages and be explainabl
 
 ### Syntax errors
 
-**E201 "expected X, found Y"** (missing `;`, brace, parenthesis, ...). Only the first syntax error is reported; there is no error recovery. Location rule: if the offending (found) token is on a later line than the previous token, the error is reported immediately after the previous token (line of the previous token, column = previous column + length of its text); otherwise at the found token. This puts a missing `;` at the end of the line where it belongs, not at the start of the next statement (`syntax_missing_semicolon.as`: 6:30).
+**E201 "expected X, found Y"** (missing `;`, brace, parenthesis, ...). Only the first syntax error is reported; there is no error recovery. Location rule: if the offending (found) token is on a later line than the previous token, the error is reported immediately after the previous token (line of the previous token, column = previous column + length of its text); otherwise at the found token. This puts a missing `;` at the end of the line where it belongs, not at the start of the next statement (`syntax_missing_semicolon.as`: 6:30). Nesting is bounded: more than 1000 levels of parentheses, brackets, call arguments and blocks, or an AST deeper than 1000 levels (a long operator chain counts one level per operator), is E201 "expected at most 1000 levels of nesting", at the token or node that goes too deep.
 
 ## Semantics
 
@@ -221,7 +221,7 @@ Why no shadowing: one name has one meaning everywhere in a task, which keeps err
 | `repeat x { B }`, x a variable | calls(B), counted once, plus **warning W306** "repeat count `x` is not a literal; the budget for this loop is enforced at runtime", at the count identifier |
 
 - The check builds the worst path as a list of call sites. Call sites on the worst path are listed in evaluation order (operands and arguments left to right, then the call itself); when both branches of an `if` have the same count, the then branch is taken. If the path is longer than the budget: **E306** at the (budget+1)-th call on that path; the message names the task, the worst-path count and the budget, and `path` lists the call sites on the worst path.
-- At runtime the VM counts every executed call again and stops with **E601** before executing the call that would exceed the budget. This is what makes the W306 case safe.
+- At runtime the VM counts every executed call again and stops with **E601** before executing the call that would exceed the budget. This is what makes the W306 case safe. The VM also stops with E601 after 1,000,000 executed instructions, because the call budget does not bound call-free loops.
 
 ### Taint (T1 to T4)
 
@@ -577,3 +577,4 @@ Rows 1 to 12 are the suspected issues from the review prompt (all held); rows 13
 | 41 | Phase artifacts had no defined format | Compiler architecture | Every artifact is `{"text", "data"}`; tabs for phases that did not run are empty |
 | 42 | Viva answers on budget and taint inconsistent with the corrected rules | Viva questions | Budget answer mentions `repeat`, W306 and E601; taint answer mentions implicit flows and the sanitizer |
 | 43 | "Sends a message with no human confirmation" promises an approval check for `send_email`, but only `delete_file` is irreversible; `send_email` is a privileged sink checked by taint | Problem and motivation | Bullet reduced to deleting a file without confirmation; `send_email` stays a taint sink only |
+| 44 | Nothing bounded nesting depth or call-free loops, so valid programs could crash the compiler (recursion limit) or hang a run | Compiler architecture, Runtime | Nesting deeper than 1000 levels (parentheses, blocks, or a long operator chain) is E201 "expected at most 1000 levels of nesting"; the VM stops with E601 after 1,000,000 executed instructions |
