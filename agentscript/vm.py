@@ -1,10 +1,15 @@
 """The AgentScript stack VM: validates a run request, then executes one task's bytecode.
 
 Runtime guards (brief section 3, "Running"):
-    E601  budget exceeded: checked before every CALL / CALL_PARALLEL; nothing executes
+    E601  budget exceeded: checked before every call, also each call of a CALL_PARALLEL round:
+          the calls of the round that fit run, then E601 at the first one that does not,
+          exactly as the unscheduled program would
     E602  tool not permitted (defensive: compiled programs never trigger it)
     E603  index out of range (i < 0 or i >= len)
     E604  invalid run request (unknown task, missing/extra argument, wrong JSON type)
+
+The call budget does not bound call-free loops, so the VM also stops with E601 after
+MAX_STEPS executed instructions (an execution-step budget; the brief sets no such limit).
 
 A runtime error carries the calls made so far as `err.calls` and `err.calls_used`.
 """
@@ -21,6 +26,7 @@ from .diagnostics import AgentRuntimeError, make_diagnostic, make_error
 from .registry import ToolRegistry
 
 RESULT_PREVIEW = 60
+MAX_STEPS = 1_000_000  # executed instructions per run
 
 
 @dataclass
@@ -120,7 +126,7 @@ def _invalid(message: str) -> AgentRuntimeError:
 
 
 def validate_request(program: BytecodeProgram, task: str, args: Any) -> BytecodeTask:
-    if task not in program.tasks:
+    if not isinstance(task, str) or task not in program.tasks:
         known = ", ".join(program.tasks) or "none"
         raise _invalid(f"unknown task `{task}` (tasks: {known})")
     spec = program.tasks[task]
@@ -183,9 +189,18 @@ class _Machine:
 
     def execute(self) -> Any:
         pc = 0
+        steps = 0
         while 0 <= pc < len(self.code):
             instr = self.code[pc]
             pc += 1
+            steps += 1
+            if steps > MAX_STEPS:
+                raise make_error(
+                    "E601",
+                    f"budget exceeded: execution step limit of {MAX_STEPS} instructions reached",
+                    instr.line,
+                    instr.col,
+                )
             op = instr.op
             if op is Op.PUSH_CONST:
                 self.stack.append(instr.arg)
@@ -225,20 +240,16 @@ class _Machine:
             )
         self.stack.append(base[i])
 
-    def guard(self, tools: list[str], instr: BInstr) -> None:
-        """Budget for the whole round first, then permission of every tool in it."""
+    def guard_error(self, tool: str, n: int, line: int, col: int) -> AgentRuntimeError | None:
+        """The E601/E602 error for making call number n (1-based) to `tool`, or None if allowed."""
         budget = self.program.budget
-        if len(self.calls) + len(tools) > budget:
+        if n > budget:
             message = f"budget exceeded: call {budget + 1} would exceed the budget of {budget} calls"
-            if len(tools) > 1:
-                message += f" (parallel round of {len(tools)} calls)"
-            raise make_error("E601", message, instr.line, instr.col)
-        for tool in tools:
-            if tool not in self.program.permits:
-                permits = ", ".join(self.program.permits) or "none"
-                raise make_error(
-                    "E602", f"tool `{tool}` is not permitted at runtime (permits: {permits})", instr.line, instr.col
-                )
+            return make_error("E601", message, line, col)
+        if tool not in self.program.permits:
+            permits = ", ".join(self.program.permits) or "none"
+            return make_error("E602", f"tool `{tool}` is not permitted at runtime (permits: {permits})", line, col)
+        return None
 
     def invoke(self, tool: str, args: list) -> tuple[Any, str | None]:
         if hasattr(self.registry, "call_with_note"):
@@ -248,36 +259,51 @@ class _Machine:
         notes = self.registry.notes[before:]
         return value, "; ".join(notes) if notes else None
 
-    def record(self, tool: str, args: list, result: Any, note: str | None, instr: BInstr) -> None:
+    def record(self, tool: str, args: list, result: Any, note: str | None, line: int, col: int) -> None:
         n = len(self.calls) + 1
-        self.calls.append(CallRecord(n, tool, args, result, instr.line, instr.col, self.rounds, note))
+        self.calls.append(CallRecord(n, tool, args, result, line, col, self.rounds, note))
 
     def call(self, instr: BInstr) -> None:
         tool, argc = instr.arg, instr.arg2
-        self.guard([tool], instr)
+        error = self.guard_error(tool, len(self.calls) + 1, instr.line, instr.col)
+        if error is not None:
+            raise error
         args = self.pop_args(argc, instr)
         self.rounds += 1
         result, note = self.invoke(tool, args)
-        self.record(tool, args, result, note, instr)
+        self.record(tool, args, result, note, instr.line, instr.col)
         self.stack.append(result)
 
     def call_parallel(self, instr: BInstr) -> None:
         specs = [(tool, argc) for tool, argc in instr.arg]
-        self.guard([tool for tool, _ in specs], instr)
+        locations = [tuple(loc) for loc in instr.arg2] if instr.arg2 else [(instr.line, instr.col)] * len(specs)
+        if len(locations) != len(specs):
+            raise _internal("CALL_PARALLEL needs one location per call", instr)
         total = sum(argc for _, argc in specs)
         flat = self.pop_args(total, instr)
         groups, offset = [], 0
         for tool, argc in specs:
             groups.append((tool, flat[offset : offset + argc]))
             offset += argc
-        self.rounds += 1
-        with ThreadPoolExecutor(max_workers=max(1, len(groups))) as pool:
-            futures = [pool.submit(self.invoke, tool, args) for tool, args in groups]
-            # results are collected in program order, so the log and stack stay deterministic
-            outcomes = [f.result() for f in futures]
-        for (tool, args), (result, note) in zip(groups, outcomes):
-            self.record(tool, args, result, note, instr)
-            self.stack.append(result)
+        # guard each call in program order: the ones before the first refused call still run
+        # (as one round), so a budget or permission stop matches sequential execution
+        error = None
+        for k, (tool, _) in enumerate(groups):
+            error = self.guard_error(tool, len(self.calls) + k + 1, *locations[k])
+            if error is not None:
+                groups = groups[:k]
+                break
+        if groups:
+            self.rounds += 1
+            with ThreadPoolExecutor(max_workers=len(groups)) as pool:
+                futures = [pool.submit(self.invoke, tool, args) for tool, args in groups]
+                # results are collected in program order, so the log and stack stay deterministic
+                outcomes = [f.result() for f in futures]
+            for (tool, args), (result, note), (line, col) in zip(groups, outcomes, locations):
+                self.record(tool, args, result, note, line, col)
+                self.stack.append(result)
+        if error is not None:
+            raise error
 
 
 def run(program: BytecodeProgram, task: str, args: dict, registry: ToolRegistry) -> RunResult:

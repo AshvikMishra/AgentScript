@@ -6,6 +6,8 @@ schedule(cfg) works on a deep copy of the CFG, one basic block at a time:
   true (read-after-write), anti (write-after-read) and output (write-after-write)
   dependencies; a barrier call (ToolSpec.barrier: privileged, irreversible or approval)
   depends on every earlier Call in the block and every later Call depends on it (L3);
+  an Index (which may fail with E603) is ordered against every Call the same way, so a
+  failing index stops the run after exactly the calls the unscheduled program makes;
 - list scheduling: repeatedly emit every ready non-call instruction in original order until
   none is ready, then take every ready Call as one round (k >= 2 -> one ParallelCalls with
   the line/col of the first call, k == 1 -> the plain Call); the terminator stays last.
@@ -71,6 +73,12 @@ def _is_barrier(instr: Instr) -> bool:
     return isinstance(instr, Call) and instr.tool in TOOLS and TOOLS[instr.tool].barrier
 
 
+def _call_and_index(a: Instr, b: Instr) -> bool:
+    return (isinstance(a, Call) and isinstance(b, ir.Index)) or (
+        isinstance(a, ir.Index) and isinstance(b, Call)
+    )
+
+
 def build_dependencies(instrs: list[Instr]) -> list[set[int]]:
     """deps[j] = indexes of the earlier instructions that j must follow."""
     deps: list[set[int]] = [set() for _ in instrs]
@@ -90,6 +98,8 @@ def build_dependencies(instrs: list[Instr]) -> list[set[int]]:
             elif isinstance(earlier, Call) and isinstance(later, Call):
                 if _is_barrier(earlier) or _is_barrier(later):
                     deps[j].add(i)
+            elif _call_and_index(earlier, later):
+                deps[j].add(i)
     return deps
 
 

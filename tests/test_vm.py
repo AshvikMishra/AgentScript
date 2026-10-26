@@ -385,7 +385,8 @@ def test_parallel_mixed_argc_split():
     assert res.calls[0].args == ["x@y.z", "body"] and res.calls[1].args == ["p"]
 
 
-def test_parallel_budget_checked_for_whole_round():
+def test_parallel_budget_runs_the_calls_that_fit_then_stops():
+    # sequential execution would make calls 1 and 2, then stop at call 3: so must a round
     calls_seen = []
 
     class Spy(MockRegistry):
@@ -396,9 +397,38 @@ def test_parallel_budget_checked_for_whole_round():
     err = runtime_error(parallel_code(), PARALLEL_ARGS, Spy(), params=PARALLEL_PARAMS,
                         return_type="string", budget=2)
     d = err.diagnostic
-    assert d.code == "E601" and (d.line, d.col) == (6, 14)
-    assert d.message.startswith("budget exceeded: call 3 would exceed the budget of 2 calls")
-    assert calls_seen == [] and err.calls == [] and err.calls_used == 0
+    assert d.code == "E601" and (d.line, d.col) == (6, 14)  # no per-call locations: the round's
+    assert d.message == "budget exceeded: call 3 would exceed the budget of 2 calls"
+    assert calls_seen == ["web_search", "web_search"]
+    assert [c.args for c in err.calls] == [["rust"], ["go"]] and err.calls_used == 2
+    assert [c.round for c in err.calls] == [1, 1]
+
+
+def test_parallel_budget_error_at_the_refused_calls_own_location():
+    code = parallel_code()
+    code[3] = I(Op.CALL_PARALLEL, code[3].arg, [[6, 14], [7, 14], [8, 14]], line=6, col=14)
+    err = runtime_error(code, PARALLEL_ARGS, params=PARALLEL_PARAMS, return_type="string", budget=2)
+    assert (err.diagnostic.line, err.diagnostic.col) == (8, 14)
+    assert [c.line for c in err.calls] == [6, 7]
+
+
+def test_parallel_budget_zero_left_runs_nothing():
+    err = runtime_error(parallel_code(), PARALLEL_ARGS, params=PARALLEL_PARAMS, return_type="string", budget=0)
+    assert err.diagnostic.code == "E601" and err.calls == []
+
+
+def test_parallel_calls_logged_at_their_own_lines():
+    code = parallel_code()
+    code[3] = I(Op.CALL_PARALLEL, code[3].arg, [[6, 14], [7, 14], [8, 14]], line=6, col=14)
+    res = run_code(code, PARALLEL_ARGS, params=PARALLEL_PARAMS, return_type="string", budget=4)
+    assert [(c.line, c.col, c.round) for c in res.calls] == [(6, 14, 1), (7, 14, 1), (8, 14, 1), (9, 12, 2)]
+
+
+def test_parallel_location_count_mismatch_is_internal():
+    code = parallel_code()
+    code[3] = I(Op.CALL_PARALLEL, code[3].arg, [[6, 14]], line=6, col=14)
+    err = runtime_error(code, PARALLEL_ARGS, params=PARALLEL_PARAMS, return_type="string")
+    assert err.diagnostic.code == "E000"
 
 
 def test_parallel_budget_trips_on_following_call():
@@ -407,10 +437,20 @@ def test_parallel_budget_trips_on_following_call():
     assert err.calls_used == 3 and [c.round for c in err.calls] == [1, 1, 1]
 
 
-def test_parallel_permission_checked_before_any_call():
+def test_parallel_permission_checked_per_call_in_order():
+    # nothing before the refused call: no call runs at all
     err = runtime_error(parallel_code(), PARALLEL_ARGS, params=PARALLEL_PARAMS, return_type="string",
                         permits=["llm"])
     assert err.diagnostic.code == "E602" and err.calls == []
+    # a permitted call before the refused one still runs, as it would sequentially
+    code = [
+        I(Op.PUSH_CONST, "p"), I(Op.PUSH_CONST, "q"),
+        I(Op.CALL_PARALLEL, [("llm", 1), ("web_search", 1)], [[3, 5], [4, 5]]),
+        I(Op.STORE, "b"), I(Op.STORE, "a"), I(Op.LOAD, "a"), I(Op.RETURN),
+    ]
+    err = runtime_error(code, return_type="string", permits=["llm"])
+    assert err.diagnostic.code == "E602" and (err.diagnostic.line, err.diagnostic.col) == (4, 5)
+    assert [c.tool for c in err.calls] == ["llm"]
 
 
 def test_parallel_calls_really_run_concurrently():
@@ -552,3 +592,34 @@ def test_result_types():
     res = run(report_program(), "main", {"topic": "AI safety"}, MockRegistry())
     assert isinstance(res, RunResult) and all(isinstance(c, CallRecord) for c in res.calls)
     assert isinstance(ToolRegistry, type)
+
+
+# ---------------------------------------------------------------- robustness
+
+
+def test_step_limit_stops_call_free_loop(monkeypatch):
+    import agentscript.vm as vm
+
+    monkeypatch.setattr(vm, "MAX_STEPS", 50)
+    loop = [I(Op.JUMP, 0, line=5, col=5)]
+    err = runtime_error(loop)
+    d = err.diagnostic
+    assert d.code == "E601" and (d.line, d.col) == (5, 5)
+    assert "execution step limit of 50 instructions" in d.message
+
+
+def test_step_limit_is_inclusive(monkeypatch):
+    import agentscript.vm as vm
+
+    code = [I(Op.PUSH_CONST, 1), I(Op.STORE, "x"), I(Op.PUSH_CONST, 7), I(Op.RETURN)]
+    monkeypatch.setattr(vm, "MAX_STEPS", 4)  # exactly 4 executed instructions are allowed
+    assert value_of(code) == 7
+    monkeypatch.setattr(vm, "MAX_STEPS", 3)
+    assert runtime_error(code).diagnostic.code == "E601"
+
+
+@pytest.mark.parametrize("task", [["main"], {"t": 1}, None, 5])
+def test_non_string_task_is_e604(task):
+    with pytest.raises(AgentRuntimeError) as info:
+        run(program([I(Op.PUSH_CONST, 1), I(Op.RETURN)]), task, {}, MockRegistry())
+    assert info.value.diagnostic.code == "E604"

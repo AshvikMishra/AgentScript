@@ -14,6 +14,10 @@ from enum import Enum
 from .diagnostics import make_error
 
 
+def _is_surrogate(ch: str) -> bool:
+    return len(ch) == 1 and 0xD800 <= ord(ch) <= 0xDFFF
+
+
 class TokenKind(Enum):
     # Keywords: the value is the lexeme.
     AGENT = "agent"
@@ -169,11 +173,15 @@ class _Lexer:
                 raise make_error(
                     "E101", "unterminated string: missing closing '\"' before end of line", line, col
                 )
+            if _is_surrogate(ch):  # cannot be encoded as UTF-8 in any artifact or response
+                raise make_error("E102", f"illegal character {ch!r}", self.line, self.col)
             self.advance()
             if ch == '"':
                 break
             if ch == "\\":
                 nxt = self.peek()
+                if _is_surrogate(nxt):
+                    raise make_error("E102", f"illegal character {nxt!r}", self.line, self.col)
                 if nxt in ("", "\n"):
                     continue  # the loop head reports E101 at the opening quote
                 self.advance()

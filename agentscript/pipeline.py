@@ -4,10 +4,17 @@
 and an unexpected Python exception becomes an internal E000 diagnostic, so the API never
 answers 500 on user input. Phases after the failing one stay null. `CompileResult.to_dict()`
 is the `/compile` response and `run_source` builds the `/run` response (brief section 7).
+
+The phases are recursive over the AST, so compilation runs in a worker thread with a large
+stack and a raised recursion limit; with the parser's MAX_NESTING bound, no valid program
+can hit Python's recursion limit.
 """
 
 from __future__ import annotations
 
+import sys
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -192,9 +199,39 @@ class _Driver:
         phases["bytecode"] = bytecode_artifact(res.program)
 
 
+_DEEP_STACK_BYTES = 256 * 1024 * 1024
+_RECURSION_LIMIT = 100_000
+_stack_size_lock = threading.Lock()
+
+
+def _with_deep_stack(fn: Callable[[], Any]) -> Any:
+    """Run fn() in a fresh thread with a large C stack and a raised recursion limit."""
+    if sys.getrecursionlimit() < _RECURSION_LIMIT:
+        sys.setrecursionlimit(_RECURSION_LIMIT)  # process-wide; only ever raised
+    box: dict[str, Any] = {}
+
+    def target() -> None:
+        try:
+            box["value"] = fn()
+        except BaseException as exc:  # re-raised in the caller's thread
+            box["error"] = exc
+
+    with _stack_size_lock:  # stack_size() is global: set it only around this thread's start
+        old = threading.stack_size(_DEEP_STACK_BYTES)
+        try:
+            worker = threading.Thread(target=target, name="agentscript-compile")
+            worker.start()
+        finally:
+            threading.stack_size(old)
+    worker.join()
+    if "error" in box:
+        raise box["error"]
+    return box["value"]
+
+
 def compile_source(source: str, parallel: bool = True) -> CompileResult:
     """Compile `source` through every phase; never raises (see the module docstring)."""
-    return _Driver(source, parallel).compile()
+    return _with_deep_stack(_Driver(source, parallel).compile)
 
 
 # ---------------------------------------------------------------------------- run

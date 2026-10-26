@@ -72,7 +72,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 1
     try:
         run_args = json.loads(args.args)
-    except json.JSONDecodeError as err:
+    except ValueError as err:  # JSONDecodeError is a ValueError
         print(f"error: --args is not valid JSON: {err}", file=sys.stderr)
         return 1
 

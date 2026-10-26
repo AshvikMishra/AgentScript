@@ -537,3 +537,73 @@ def test_examples_parse_per_manifest(entry: dict):
     else:
         agent = parse_src(source)
         assert isinstance(agent, ast.Agent) and agent.tasks
+
+
+# ------------------------------------------------------------- nesting bound (MAX_NESTING)
+# Deep programs go through compile_source, which runs the phases on a deep stack.
+
+
+def _deep_diag(body: str):
+    from agentscript.pipeline import compile_source
+
+    res = compile_source(program(body))
+    return res, (res.error.format() if res.error else None)
+
+
+def test_max_nesting_value():
+    from agentscript.parser import MAX_NESTING
+
+    assert MAX_NESTING == 1000
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "    return " + "(" * 900 + "1" + ")" * 900 + ";",
+        "    return " + "+".join(["1"] * 900) + ";",
+        "    return " + " == ".join(["1"] * 2) + " == true;",
+        "    " + "if (true) {" * 400 + "return 1;" + "}" * 400 + "\n    return 0;",
+        "    " + "repeat 1 {" * 400 + "}" * 400 + "\n    return 0;",
+    ],
+    ids=["parens-900", "chain-900", "eq", "if-400", "repeat-400"],
+)
+def test_deep_but_bounded_programs_compile(body):
+    res, err = _deep_diag(body)
+    assert res.ok, err
+
+
+def test_too_many_parens_is_e201_at_the_token():
+    res, _ = _deep_diag("    return " + "(" * 1200 + "1" + ")" * 1200 + ";")
+    d = res.error
+    assert (d.code, d.phase) == ("E201", "parser")
+    assert d.message == "expected at most 1000 levels of nesting, found '('"
+    # parse_expr is entered for the return value and once per `(`: the 1000th `(` is refused
+    assert (d.line, d.col) == (5, 12 + 999)
+
+
+def test_long_operator_chain_is_e201_at_the_deep_node():
+    res, _ = _deep_diag("    return " + "+".join(["1"] * 5000) + ";")
+    d = res.error
+    assert d.code == "E201" and d.message.startswith("expected at most 1000 levels of nesting, found a deeper")
+    assert d.line == 5
+
+
+def test_too_many_nested_blocks_is_e201():
+    res, _ = _deep_diag("    " + "if (true) {" * 1200 + "return 1;" + "}" * 1200 + "\n    return 0;")
+    assert res.error.code == "E201" and "levels of nesting" in res.error.message
+
+
+def test_check_nesting_is_iterative():
+    import sys
+
+    from agentscript.parser import check_nesting
+
+    # a left-deep chain far deeper than the recursion limit is checked without recursion
+    expr = ast.IntLit(1, 5, 12)
+    for _ in range(sys.getrecursionlimit() + 10):
+        expr = ast.Binary("+", expr, ast.IntLit(1, 5, 14), 5, 13)
+    agent = parse_src(program("    return 1;"))
+    agent.tasks[0].body.statements[0].value = expr
+    with pytest.raises(CompileError) as info:
+        check_nesting(agent)
+    assert info.value.diagnostic.code == "E201"

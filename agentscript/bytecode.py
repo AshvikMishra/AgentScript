@@ -9,7 +9,8 @@ Stack effects (stack grows to the right):
     EQ NE LT LE GT GE     [a, b] -> [bool]
     INDEX                 [list, i] -> [list[i]]    (E603 when i is out of range)
     CALL tool argc        [a1 .. an] -> [result]    (budget guard E601, permission guard E602)
-    CALL_PARALLEL calls   [args of call 1 .. args of call k] -> [r1 .. rk]   (M7; arg = [(tool, argc), ...])
+    CALL_PARALLEL calls   [args of call 1 .. args of call k] -> [r1 .. rk]   (M7; arg = [(tool, argc), ...],
+                          arg2 = [[line, col], ...] of each member call, or None)
     JUMP addr             [] -> []
     JUMP_IF_FALSE addr    [cond] -> []
     RETURN                [v] -> []                 (ends the task with value v)
@@ -62,7 +63,7 @@ BINARY_OPS: dict[str, Op] = {
 class BInstr:
     op: Op
     arg: Any = None  # PUSH_CONST value, LOAD/STORE name, CALL tool, JUMP* address, CALL_PARALLEL [(tool, argc), ...]
-    arg2: Any = None  # CALL argc
+    arg2: Any = None  # CALL argc, CALL_PARALLEL [[line, col], ...] (one per call; optional)
     line: int = field(default=0, kw_only=True)
     col: int = field(default=0, kw_only=True)
 

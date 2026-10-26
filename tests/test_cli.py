@@ -211,3 +211,21 @@ def test_usage_errors(argv):
     with pytest.raises(SystemExit) as info:
         main(argv)
     assert info.value.code == 2
+
+
+def test_run_args_with_huge_int_does_not_crash():
+    big = "9" * 5000
+    r = cli("run", ex("runtime_budget.as"), "--task", "poll", "--args", '{"topic": "x", "times": %s}' % big)
+    assert "Traceback" not in r.stderr
+    assert "E601" in r.stdout
+
+
+def test_run_prints_huge_int_result(tmp_path):
+    prog = tmp_path / "big.as"
+    prog.write_text(
+        "agent A {\n permit llm;\n budget calls = 1;\n task t(n: int) -> int {\n"
+        " let b = n*n*n*n*n*n*n*n*n*n;\n let c = b*b*b*b*b*b*b*b*b*b;\n let d = c*c*c*c*c;\n return d;\n }\n}\n"
+    )
+    r = cli("run", str(prog), "--task", "t", "--args", '{"n": 9999999999}')
+    assert r.returncode == 0, r.stderr
+    assert f"value: {9999999999 ** 500}" in r.stdout

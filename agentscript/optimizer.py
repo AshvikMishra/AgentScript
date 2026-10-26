@@ -130,15 +130,20 @@ def _substitute(instr: Instr, env: dict[str, Operand], changes: list[str]) -> bo
     return len(changes) > before
 
 
-def _kill(env: dict[str, Operand], name: str) -> None:
-    """`name` is redefined: forget its value and every copy that reads it."""
+def _kill(env: dict[str, Operand], readers: dict[str, set[str]], name: str) -> None:
+    """`name` is redefined: forget its value and every copy that reads it.
+
+    `readers[x]` holds the env keys that were set to a copy of x (possibly stale, hence the
+    re-check), so a kill costs O(copies of name) and not O(len(env))."""
     env.pop(name, None)
-    for key in [k for k, v in env.items() if v == Var(name)]:
-        del env[key]
+    for key in readers.pop(name, ()):
+        if env.get(key) == Var(name):
+            del env[key]
 
 
 def _fold_block(block: BasicBlock, changes: list[str]) -> bool:
     env: dict[str, Operand] = {}
+    readers: dict[str, set[str]] = {}
     changed = False
     for pos, instr in enumerate(block.instrs):
         changed |= _substitute(instr, env, changes)
@@ -159,9 +164,11 @@ def _fold_block(block: BasicBlock, changes: list[str]) -> bool:
             block.instrs[pos] = Jump(target, line=instr.line, col=instr.col)
             changed = True
         for name in ir.defined_vars(instr):
-            _kill(env, name)
+            _kill(env, readers, name)
         if isinstance(instr, Assign) and instr.src != instr.dst:
             env[instr.dst.name] = instr.src
+            if isinstance(instr.src, Var):
+                readers.setdefault(instr.src.name, set()).add(instr.dst.name)
     return changed
 
 

@@ -564,3 +564,16 @@ def test_parallel_demo_via_scheduler():
     result = run(generate(agent, scheduled), "scout", {"a": "rust", "b": "go", "c": "zig"}, MockRegistry())
     assert result.rounds == 2
     assert [c.round for c in result.calls] == [1, 1, 1, 2]
+
+
+def test_parallel_calls_carry_member_locations():
+    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text())
+    _parallelize_first_three_calls(cfgs[0])
+    code = generate(agent, cfgs).tasks["scout"].code
+    group = code[3]
+    assert group.op is Op.CALL_PARALLEL
+    assert [tuple(loc) for loc in group.arg2] == [(c.line, c.col) for c in cfgs[0].blocks["entry"].instrs[0].calls]
+    assert [loc[0] for loc in group.arg2] == [6, 7, 8]
+    assert group.to_dict()["arg2"] == [list(loc) for loc in group.arg2]
+    result = run(generate(agent, cfgs), "scout", {"a": "rust", "b": "go", "c": "zig"}, MockRegistry())
+    assert [c.line for c in result.calls] == [6, 7, 8, 9]

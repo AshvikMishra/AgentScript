@@ -25,11 +25,17 @@ There is one method per grammar rule of the design brief, section 2:
                  | IDENT [ "(" [ expr { "," expr } ] ")" ] | "(" expr ")" ;
 
 The first syntax error raises E201 "expected X, found Y"; there is no recovery.
+
+Nesting is bounded by MAX_NESTING so that no later (recursive) phase can hit Python's
+recursion limit: deeper `(`/`[`/call/block nesting while parsing, or a deeper finished AST
+(a long left-deep operator chain counts one level per operator), is E201
+"expected at most N levels of nesting".
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import fields, is_dataclass
 
 from . import ast_nodes as ast
 from .diagnostics import CompileError, make_error
@@ -37,6 +43,9 @@ from .lexer import Token, TokenKind
 from .typesys import BOOL, INT, STRING, Type, list_of
 
 K = TokenKind
+
+MAX_NESTING = 1000
+_NESTING = f"at most {MAX_NESTING} levels of nesting"
 
 _VARIABLE_KIND_NAMES = {
     K.IDENT: "identifier",
@@ -76,6 +85,7 @@ class Parser:
             raise ValueError("token list must end with EOF")
         self.tokens = tokens
         self.pos = 0
+        self.depth = 0  # current `(`/`[`/call-argument/block nesting
 
     # ------------------------------------------------------------ token helpers
 
@@ -187,7 +197,19 @@ class Parser:
 
     # --------------------------------------------------------------- statements
 
+    def enter(self) -> None:
+        self.depth += 1
+        if self.depth > MAX_NESTING:
+            raise self.error(_NESTING)
+
     def parse_block(self) -> ast.Block:
+        self.enter()
+        try:
+            return self._block()
+        finally:
+            self.depth -= 1
+
+    def _block(self) -> ast.Block:
         start = self.expect(K.LBRACE)
         statements: list[ast.Stmt] = []
         while not self.check(K.RBRACE, K.EOF):
@@ -251,7 +273,11 @@ class Parser:
     # -------------------------------------------------------------- expressions
 
     def parse_expr(self) -> ast.Expr:
-        return self.parse_equality()
+        self.enter()
+        try:
+            return self.parse_equality()
+        finally:
+            self.depth -= 1
 
     def _binary_level(self, ops: set[TokenKind], operand: Callable[[], ast.Expr]) -> ast.Expr:
         """Left-associative chain `operand { op operand }`; the node sits at the operator."""
@@ -320,6 +346,36 @@ class Parser:
         return ast.Call(name.text, args, name.line, name.col)
 
 
+def check_nesting(agent: ast.Agent) -> None:
+    """E201 at the first node (preorder, source order) deeper than MAX_NESTING statement /
+    block / expression levels. Iterative, so the check itself cannot overflow."""
+    stack: list[tuple[object, int]] = [(t.body, 1) for t in reversed(agent.tasks)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > MAX_NESTING:
+            raise make_error(
+                "E201", f"expected {_NESTING}, found a deeper {_node_kind(node)}",
+                node.line, node.col,
+            )
+        children: list[object] = []
+        for f in fields(node):
+            value = getattr(node, f.name)
+            items = value if isinstance(value, list) else [value]
+            children.extend(v for v in items if is_dataclass(v) and isinstance(v, _NODE_TYPES))
+        stack.extend((child, depth + 1) for child in reversed(children))
+
+
+_NODE_TYPES = (ast.Expr, ast.Stmt, ast.Block)
+
+
+def _node_kind(node: object) -> str:
+    if isinstance(node, ast.Expr):
+        return "expression"
+    return "statement" if isinstance(node, ast.Stmt) else "block"
+
+
 def parse(tokens: list[Token]) -> ast.Agent:
     """Parse a token list (from lexer.tokenize); raises CompileError E201 on the first error."""
-    return Parser(tokens).parse_program()
+    agent = Parser(tokens).parse_program()
+    check_nesting(agent)
+    return agent

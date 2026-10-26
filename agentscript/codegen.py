@@ -12,7 +12,8 @@ Per IR instruction:
     BinOp   dst = a op b       push a; push b; ADD|SUB|...; STORE dst
     Index   dst = xs[i]        push xs; push i; INDEX; STORE dst
     Call    dst = tool(args)   push args in order; CALL tool argc; STORE dst
-    ParallelCalls              push the args of each call in order; CALL_PARALLEL [(tool, argc) ...];
+    ParallelCalls              push the args of each call in order; CALL_PARALLEL [(tool, argc) ...]
+                               with arg2 = [[line, col] ...] of each member call;
                                STORE the dsts in reverse order (the last result is on top)
     Return  value              push value; RETURN
     Branch  c ? T : F          push c; JUMP_IF_FALSE F; JUMP T  (JUMP omitted when T is the next block)
@@ -20,7 +21,8 @@ Per IR instruction:
 
 "push" is PUSH_CONST for a Const and LOAD for a Var. Every BInstr carries the line/col of
 the IR instruction it came from (inside a ParallelCalls: the member Call's, except for the
-CALL_PARALLEL itself, which carries the group's).
+CALL_PARALLEL itself, which carries the group's and lists each member's in arg2, so the VM
+logs and reports every call at its own location).
 """
 
 from __future__ import annotations
@@ -127,7 +129,8 @@ class _TaskEmitter:
             for arg in call.args:
                 self.push(arg, call)
         specs = [(call.tool, len(call.args)) for call in instr.calls]
-        self.put(Op.CALL_PARALLEL, instr, specs)
+        locations = [[call.line, call.col] for call in instr.calls]
+        self.put(Op.CALL_PARALLEL, instr, specs, locations)
         # results are pushed in call order, so the last call's result is popped first
         for call in reversed(instr.calls):
             self.put(Op.STORE, call, call.dst.name)

@@ -501,3 +501,83 @@ def test_hand_built_cfg_with_int_task():
     assert isinstance(ret, Return)
     assert (report.rounds_before, report.rounds_after) == (2, 1)
     assert len(block.instrs) == 3  # input block untouched
+
+
+# ------------------------------------------- Index (may raise E603) is ordered against calls
+
+
+def test_index_after_barrier_call_stays_after_it():
+    cfg, report = scheduled(
+        '    let xs = web_search(a);\n'
+        '    let sent = send_email(b, "hello");\n'
+        '    let y = xs[10];\n'
+        '    return y;'
+    )
+    instrs = cfg.blocks["entry"].instrs
+    kinds = [type(i).__name__ for i in instrs]
+    assert kinds.index("Index") > max(k for k, i in enumerate(instrs) if isinstance(i, Call))
+
+
+def test_call_after_index_waits_for_it():
+    cfg, report = scheduled(
+        '    let xs = web_search(a);\n'
+        '    let y = xs[10];\n'
+        '    let z = read_file(b);\n'
+        '    return z;'
+    )
+    assert report.rounds_after == 2
+    instrs = cfg.blocks["entry"].instrs
+    order = [type(i).__name__ for i in instrs]
+    assert order.index("Index") < [k for k, i in enumerate(instrs) if isinstance(i, Call)][1]
+
+
+def test_index_dependencies_in_graph():
+    xs, y, z = Var("xs"), Var("y"), Var("z")
+    body = [
+        Call(xs, "web_search", [Const("q")], line=1, col=1),
+        ir.Index(y, xs, Const(0), line=2, col=1),
+        Call(z, "read_file", [Const("f")], line=3, col=1),
+    ]
+    deps = build_dependencies(body)
+    assert deps[1] == {0} and 1 in deps[2]
+
+
+def test_index_before_all_calls_does_not_serialize_them():
+    cfg, report = scheduled(
+        '    let p = web_search(a);\n'
+        '    let q = web_search(b);\n'
+        '    let r = web_search(a + b);\n'
+        '    let x = p[0] + q[0] + r[0];\n'
+        '    return llm(x);'
+    )
+    assert (report.rounds_before, report.rounds_after) == (4, 2)
+
+
+@pytest.mark.parametrize(
+    "body, params, args",
+    [
+        (
+            '    let xs = web_search("q");\n    let sent = send_email(to, "hello");\n'
+            '    let y = xs[10];\n    return y;',
+            "to: string", {"to": "bob"},
+        ),
+        (
+            '    let xs = web_search("q");\n    let y = xs[10];\n    let z = read_file(p);\n    return z;',
+            "p: string", {"p": "f"},
+        ),
+        (
+            '    let ok = confirm("go?");\n    let xs = web_search("q");\n    let y = xs[5];\n'
+            '    let z = llm(y);\n    return z;',
+            "", {},
+        ),
+    ],
+)
+def test_scheduled_run_matches_sequential_run(body, params, args):
+    from agentscript.pipeline import run_source
+
+    src = program(body, params=params)
+    seq = run_source(src, "t", args, parallel=False)
+    par = run_source(src, "t", args, parallel=True)
+    strip = lambda r: ([(c["tool"], c["args"]) for c in r["calls"]], [d["code"] for d in r["diagnostics"]],
+                       r["value"], r["calls_used"])
+    assert strip(seq) == strip(par)

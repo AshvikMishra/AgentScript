@@ -649,3 +649,12 @@ def test_artifact_includes_warnings():
 def test_analysis_is_deterministic():
     src = (EXAMPLES / "valid_report.as").read_text()
     assert check(src).artifact() == check(src).artifact()
+
+
+def test_duplicate_task_does_not_hide_an_earlier_error():
+    # source order, first error wins: the E301 in the first task body comes before the
+    # duplicate task name
+    src = "agent A { budget calls = 1; task a() -> int { return x; } task a() -> int { return 1; } }"
+    assert error_of(src)[:3] == ("E301", 1, 54)
+    src = "agent A { budget calls = 1; task a() -> int { return 1; } task a() -> int { return 1; } }"
+    assert error_of(src)[:3] == ("E302", 1, 59)

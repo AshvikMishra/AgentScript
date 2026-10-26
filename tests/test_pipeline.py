@@ -466,3 +466,90 @@ def test_budget_checked_on_unoptimized_program():
 """
     # the optimizer would merge the two calls into one, but the budget sees both
     assert compile_source(src).error.code == "E306"
+
+
+# ------------------------------------------------------------------ robustness
+
+TINY = "agent A {\n permit llm;\n budget calls = 1;\n task t(n: int) -> int {\n%s\n }\n}\n"
+
+
+def test_deep_nesting_never_internal_error():
+    for body in [
+        "return " + "(" * 2000 + "1" + ")" * 2000 + ";",
+        "return " + "+".join(["1"] * 3000) + ";",
+        "if (true) {" * 600 + "return 1;" + "}" * 600 + "return 0;",
+    ]:
+        res = compile_source(TINY % body)
+        assert res.error.code == "E201", res.error.format()
+    assert compile_source(TINY % ("return " + "+".join(["1"] * 400) + ";")).ok
+
+
+def test_compile_from_worker_threads():
+    import threading
+
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(compiled("parallel_demo.as").ok)) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert results == [True] * 4
+
+
+def test_huge_int_literal_and_folding():
+    res = compile_source(TINY % ("return " + "9" * 4301 + ";"))
+    assert res.ok, res.format_diagnostics()
+    body = (
+        "let a = 9999999999;\nlet b = a*a*a*a*a*a*a*a*a*a;\nlet c = b*b*b*b*b*b*b*b*b*b;\n"
+        "let d = c*c*c*c*c;\nreturn d;"
+    )
+    res = compile_source(TINY % body)
+    assert res.ok, res.format_diagnostics()
+    run = run_source(TINY % "let b = n*n*n*n*n*n*n*n*n*n;\nlet c = b*b*b*b*b*b*b*b*b*b;\nlet d = c*c*c*c*c;\nreturn d;",
+                     "t", {"n": 9999999999})
+    assert run["ok"] and run["value"] == 9999999999 ** 500
+    json.dumps(run)
+
+
+def test_long_straight_line_task_compiles_fast():
+    import time
+
+    body = "\n".join(f"let v{i} = {i};" for i in range(4000)) + "\nreturn v3999;"
+    start = time.perf_counter()
+    assert compile_source(TINY % body).ok
+    assert time.perf_counter() - start < 8  # was ~4 s in the optimizer alone (quadratic _kill)
+
+
+def test_call_free_loop_hits_step_limit():
+    res = run_source(TINY % "repeat 999999999999 { }\nreturn 1;", "t", {"n": 1})
+    assert not res["ok"]
+    (err,) = [d for d in res["diagnostics"] if d["severity"] == "error"]
+    assert err["code"] == "E601" and "execution step limit" in err["message"]
+
+
+@pytest.mark.parametrize("task", [["t"], {"t": 1}])
+def test_run_source_non_string_task_is_e604(task):
+    res = run_source(TINY % "return n;", task, {"n": 1})
+    assert [d["code"] for d in res["diagnostics"]] == ["E604"]
+
+
+def test_scheduled_parallel_round_budget_matches_sequential():
+    src = (
+        "agent A { permit web_search; budget calls = 5; task t(k: int) -> int {\n"
+        "  repeat k {\n"
+        '    let a = web_search("x");\n'
+        '    let b = web_search("y");\n'
+        "  }\n"
+        "  return k; } }\n"
+    )
+    seq = run_source(src, "t", {"k": 3}, parallel=False)
+    par = run_source(src, "t", {"k": 3}, parallel=True)
+    assert par["calls_used"] == seq["calls_used"] == 5
+    assert par["diagnostics"][-1] == seq["diagnostics"][-1]
+    assert (par["diagnostics"][-1]["line"], par["diagnostics"][-1]["code"]) == (4, "E601")
+    assert [c["line"] for c in par["calls"]] == [c["line"] for c in seq["calls"]]
+
+
+def test_parallel_demo_call_lines():
+    res = run_example("parallel_demo.as")
+    assert [(c["line"], c["round"]) for c in res["calls"]] == [(6, 1), (7, 1), (8, 1), (9, 2)]

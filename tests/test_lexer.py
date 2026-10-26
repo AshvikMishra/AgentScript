@@ -276,3 +276,24 @@ def test_examples_lex_per_manifest(entry: dict):
         toks = tokenize(source)
         assert toks[-1].kind is K.EOF
         assert toks[0].kind is K.AGENT
+
+
+# ------------------------------------------------------------------ robustness
+
+
+@pytest.mark.parametrize("text", ['"a\ud800b"', '"\\\udfff"'])
+def test_lone_surrogate_in_string_is_e102(text):
+    code, line, col, message = lex_error("let s = " + text + ";")
+    assert (code, line) == ("E102", 1)
+    assert col == 9 + text.index("\\u"[0] if False else next(c for c in text if 0xD800 <= ord(c) <= 0xDFFF))
+    assert message.startswith("illegal character")
+
+
+def test_surrogate_pair_characters_outside_bmp_are_fine():
+    toks = tokenize('"\U0001F600"')
+    assert toks[0].kind is K.STRING and toks[0].value == "\U0001F600"
+
+
+def test_int_literal_longer_than_4300_digits():
+    toks = tokenize("9" * 5000)
+    assert toks[0].kind is K.INT and toks[0].value == int("9" * 5000)

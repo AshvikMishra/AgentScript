@@ -223,3 +223,15 @@ def test_run_e604_bad_requests(task, args):
 
 def test_run_missing_fields_is_422():
     assert client.post("/run", json={"source": "x"}).status_code == 422
+
+
+def test_lone_surrogate_in_string_is_a_diagnostic_not_500():
+    source = 'agent A {\n permit llm;\n budget calls = 1;\n task t() -> string {\n return "\\ud800";\n }\n}\n'
+    body = json.dumps({"source": source}).replace("\\\\ud800", "\\ud800").encode()
+    assert b'"\\ud800' in body
+    r = client.post("/compile", content=body, headers={"content-type": "application/json"})
+    assert r.status_code == 200
+    assert [d["code"] for d in r.json()["diagnostics"]] == ["E102"]
+    run_body = body[:-1] + b', "task": "t", "args": {}}'
+    r = client.post("/run", content=run_body, headers={"content-type": "application/json"})
+    assert r.status_code == 200 and r.json()["ok"] is False
