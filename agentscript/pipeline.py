@@ -200,6 +200,7 @@ class _Driver:
 
 
 _DEEP_STACK_BYTES = 256 * 1024 * 1024
+_MIN_STACK_BYTES = 16 * 1024 * 1024
 _RECURSION_LIMIT = 100_000
 _stack_size_lock = threading.Lock()
 
@@ -217,10 +218,23 @@ def _with_deep_stack(fn: Callable[[], Any]) -> Any:
             box["error"] = exc
 
     with _stack_size_lock:  # stack_size() is global: set it only around this thread's start
-        old = threading.stack_size(_DEEP_STACK_BYTES)
+        old = threading.stack_size()
+        worker = None
         try:
-            worker = threading.Thread(target=target, name="agentscript-compile")
-            worker.start()
+            # Some platforms (e.g. Windows) reject or cannot start a huge stack: step down.
+            size = _DEEP_STACK_BYTES
+            while worker is None and size >= _MIN_STACK_BYTES:
+                try:
+                    threading.stack_size(size)
+                    candidate = threading.Thread(target=target, name="agentscript-compile")
+                    candidate.start()
+                    worker = candidate
+                except (ValueError, RuntimeError):
+                    size //= 2
+            if worker is None:
+                threading.stack_size(old)
+                worker = threading.Thread(target=target, name="agentscript-compile")
+                worker.start()
         finally:
             threading.stack_size(old)
     worker.join()
