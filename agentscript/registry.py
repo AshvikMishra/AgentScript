@@ -150,7 +150,9 @@ class LiveRegistry(ToolRegistry):
                     results.append(entry["Text"])
         if not results:
             raise LiveError("no results")
-        return results
+        # pad to the mock's length so programs written against the mock (e.g. r[1], r[2]) still index safely
+        mock = mock_result("web_search", [query])
+        return results + mock[len(results):]
 
     def _live_read_file(self, path: str) -> str:
         root = Path(SANDBOX_DIR).resolve()
