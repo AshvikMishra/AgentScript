@@ -6,7 +6,7 @@ below is pasted from a real run of the command named above it (long output is cu
 explicit `...` line).
 
 Numbers to have ready: the test suite (`.venv/bin/pytest -q`) ends with
-`940 passed, 11 skipped in 8.61s`; `valid_report.as` makes 5 calls of its budget of 5;
+`941 passed, 11 skipped in 8.61s`; `valid_report.as` makes 5 calls of its budget of 5;
 `optimize_demo.as` goes from 4 tool calls to 2 (14 instructions to 10);
 `parallel_demo.as` goes from 4 rounds to 2.
 
@@ -779,7 +779,7 @@ calls: 5 of budget 5, rounds: 5
 value: true
 ```
 
-How well is it tested? `.venv/bin/pytest -q` ends with `940 passed, 11 skipped in 8.61s`.
+How well is it tested? `.venv/bin/pytest -q` ends with `941 passed, 11 skipped in 8.61s`.
 
 ### `sanitize` is trusted by fiat. Is that honest?
 

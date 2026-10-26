@@ -33,6 +33,7 @@ section of `PRD.md`.
 | [presentation/viva-notes.md](presentation/viva-notes.md) | Likely viva questions with prepared answers, and related work |
 | [presentation/AgentScript.pptx](presentation/AgentScript.pptx) | The slide deck (19 slides: architecture, diagrams, real outputs). Rebuild with `python docs/presentation/build_deck.py` (needs `pip install python-pptx`) |
 | [site/index.html](site/index.html) | The documentation website: every doc above plus the example programs, searchable, in one static page. Open it in a browser; rebuild with `python docs/site/build.py` after editing any doc |
+| [report/AgentScript-IEEE.docx](report/AgentScript-IEEE.docx) | IEEE conference-format project report (Word); [report/AgentScript-IEEE.tex](report/AgentScript-IEEE.tex) is the same report as IEEEtran LaTeX for Overleaf |
 | [prompts/](prompts/) | Prompts used to drive the agent sessions that produced these docs; do not edit |
 
 Outside `docs/`: `CLAUDE.md` (instructions for coding agents), `examples/` (demo programs)

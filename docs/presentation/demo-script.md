@@ -74,7 +74,7 @@ Before the audience arrives:
    "Mermaid did not load: showing the text form". Check once that the code is highlighted
    and the CFG tab draws a diagram.
 3. Run `.venv/bin/pytest -q` in a terminal and leave the summary visible, in case someone
-   asks whether it is tested. Last run: `940 passed, 11 skipped in 8.61s`.
+   asks whether it is tested. Last run: `941 passed, 11 skipped in 8.61s`.
 4. Increase the browser zoom (or the editor's own `A+` button) so the back row can read the
    code pane.
 
@@ -552,7 +552,7 @@ content (the API and the CLI share `agentscript/pipeline.py`; `compile --json` a
 | The page says "Offline: examples not loaded" or "Compile failed: network" | The API is not answering: restart the server, or use the CLI for the rest of the demo |
 | Live tools are slow or fail | Turn "Live tools" off; the demo is written for mock tools. A failing live call already falls back to the mock and says so in the Note column |
 | Browser misbehaves in any other way | Use the CLI for the rest of the demo |
-| Someone asks whether it really works | `.venv/bin/pytest -q` (last run: `940 passed, 11 skipped in 8.61s`) |
+| Someone asks whether it really works | `.venv/bin/pytest -q` (last run: `941 passed, 11 skipped in 8.61s`) |
 
 CLI commands, in demo order. Every one of them was run as written; the outputs pasted in
 steps 2 to 8 come from these commands.
