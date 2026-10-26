@@ -553,3 +553,20 @@ def test_scheduled_parallel_round_budget_matches_sequential():
 def test_parallel_demo_call_lines():
     res = run_example("parallel_demo.as")
     assert [(c["line"], c["round"]) for c in res["calls"]] == [(6, 1), (7, 1), (8, 1), (9, 2)]
+
+
+def test_stack_size_falls_back_when_platform_rejects_large_stacks(monkeypatch):
+    """Windows rejects thread stacks >= 256 MB; compilation must still work."""
+    import threading
+
+    from agentscript import pipeline
+
+    real = threading.stack_size
+
+    def picky(*args):
+        if args and args[0] >= 128 * 1024 * 1024:
+            raise ValueError(f"size not valid: {args[0]} bytes")
+        return real(*args)
+
+    monkeypatch.setattr(threading, "stack_size", picky)
+    assert pipeline.compile_source(source_of("valid_report.as")).ok

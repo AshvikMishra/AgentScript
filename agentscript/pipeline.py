@@ -199,9 +199,20 @@ class _Driver:
         phases["bytecode"] = bytecode_artifact(res.program)
 
 
-_DEEP_STACK_BYTES = 256 * 1024 * 1024
+# Tried in order: Windows rejects >= 256 MB, and some platforms cap lower still.
+_DEEP_STACK_CANDIDATES = (128 * 1024 * 1024, 64 * 1024 * 1024, 16 * 1024 * 1024)
 _RECURSION_LIMIT = 100_000
 _stack_size_lock = threading.Lock()
+
+
+def _set_deep_stack_size() -> int:
+    """Set the largest accepted thread stack size; return the previous setting."""
+    for size in _DEEP_STACK_CANDIDATES:
+        try:
+            return threading.stack_size(size)
+        except (ValueError, RuntimeError):
+            continue
+    return threading.stack_size()  # no candidate accepted: keep the platform default
 
 
 def _with_deep_stack(fn: Callable[[], Any]) -> Any:
@@ -217,7 +228,7 @@ def _with_deep_stack(fn: Callable[[], Any]) -> Any:
             box["error"] = exc
 
     with _stack_size_lock:  # stack_size() is global: set it only around this thread's start
-        old = threading.stack_size(_DEEP_STACK_BYTES)
+        old = _set_deep_stack_size()
         try:
             worker = threading.Thread(target=target, name="agentscript-compile")
             worker.start()
