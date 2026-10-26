@@ -16,7 +16,7 @@ from agentscript.semantic import BudgetInfo, Scope, SemanticResult, Symbol, anal
 from agentscript.typesys import BOOL, INT, STRING, list_of
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 ALL_TOOLS = "web_search, read_file, llm, send_email, delete_file, sanitize, confirm"
 
 
@@ -98,20 +98,20 @@ def test_manifest_has_every_semantic_error():
 @pytest.mark.parametrize("entry", SEMANTIC_ERRORS, ids=lambda e: e["file"])
 def test_semantic_error_examples(entry):
     exp = entry["expect"]
-    source = (EXAMPLES / entry["file"]).read_text()
+    source = (EXAMPLES / entry["file"]).read_text(encoding="utf-8")
     assert_error(source, exp["code"], exp["line"], exp["col"])
 
 
 @pytest.mark.parametrize("entry", PASSING, ids=lambda e: e["file"])
 def test_other_examples_pass(entry):
-    result = check((EXAMPLES / entry["file"]).read_text())
+    result = check((EXAMPLES / entry["file"]).read_text(encoding="utf-8"))
     got = [(w.code, w.phase, w.line, w.col) for w in result.warnings]
     want = [(w["code"], w["phase"], w["line"], w["col"]) for w in entry["warnings"]]
     assert got == want
 
 
 def test_runtime_budget_warning():
-    result = check((EXAMPLES / "runtime_budget.as").read_text())
+    result = check((EXAMPLES / "runtime_budget.as").read_text(encoding="utf-8"))
     assert len(result.warnings) == 1
     w = result.warnings[0]
     assert (w.code, w.severity, w.line, w.col) == ("W306", "warning", 6, 12)
@@ -123,7 +123,7 @@ def test_runtime_budget_warning():
 
 
 def test_valid_report_budget_and_symbols():
-    result = check((EXAMPLES / "valid_report.as").read_text())
+    result = check((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     info = result.budget["report"]
     assert isinstance(info, BudgetInfo)
     assert (info.task, info.worst_path_calls, info.budget, info.dynamic_loops) == ("report", 5, 5, False)
@@ -137,7 +137,7 @@ def test_valid_report_budget_and_symbols():
 
 def test_budget_example_path():
     with pytest.raises(CompileError) as info:
-        check((EXAMPLES / "sem_budget.as").read_text())
+        check((EXAMPLES / "sem_budget.as").read_text(encoding="utf-8"))
     d = info.value.diagnostic
     assert d.message == "task 'dig' may make 4 tool calls on its worst path, but the budget is 3"
     assert [(s.line, s.col) for s in d.path] == [(6, 13), (7, 13), (8, 13), (9, 12)]
@@ -147,7 +147,7 @@ def test_budget_example_path():
 
 def test_every_expression_is_typed_in_examples():
     for entry in PASSING:
-        agent = parse_src((EXAMPLES / entry["file"]).read_text())
+        agent = parse_src((EXAMPLES / entry["file"]).read_text(encoding="utf-8"))
         analyze(agent)
         exprs = all_exprs(agent)
         assert exprs and all(e.type is not None for e in exprs), entry["file"]
@@ -606,7 +606,7 @@ def test_let_infers_type_into_symbol():
 
 
 def test_artifact_text_and_data():
-    result = check((EXAMPLES / "valid_report.as").read_text())
+    result = check((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     art = result.artifact()
     assert set(art) == {"text", "data"}
     text = art["text"]
@@ -641,13 +641,13 @@ def test_artifact_text_and_data():
 
 
 def test_artifact_includes_warnings():
-    art = check((EXAMPLES / "runtime_budget.as").read_text()).artifact()
+    art = check((EXAMPLES / "runtime_budget.as").read_text(encoding="utf-8")).artifact()
     assert "W306" in art["text"]
     assert art["data"]["warnings"][0]["code"] == "W306"
 
 
 def test_analysis_is_deterministic():
-    src = (EXAMPLES / "valid_report.as").read_text()
+    src = (EXAMPLES / "valid_report.as").read_text(encoding="utf-8")
     assert check(src).artifact() == check(src).artifact()
 
 

@@ -19,7 +19,7 @@ from agentscript.taint import TaintInfo, TaintReport, analyze_taint, solve, tran
 from agentscript.typesys import BOOL
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 ALL_TOOLS = "web_search, read_file, llm, send_email, delete_file, sanitize, confirm"
 
 
@@ -56,7 +56,7 @@ def untrusted_names(report: TaintReport) -> set[str]:
 
 
 def example(name: str) -> str:
-    return (EXAMPLES / name).read_text()
+    return (EXAMPLES / name).read_text(encoding="utf-8")
 
 
 # ------------------------------------------------------------------ examples

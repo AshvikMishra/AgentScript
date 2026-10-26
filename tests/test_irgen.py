@@ -14,7 +14,7 @@ from agentscript.lexer import tokenize
 from agentscript.parser import parse
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 
 
 def lower_src(source: str) -> list[ir.IRFunction]:
@@ -49,7 +49,7 @@ def lower_one(body: str, **kw) -> ir.IRFunction:
 
 
 def test_valid_report_exact_listing():
-    (fn,) = lower_src((EXAMPLES / "valid_report.as").read_text())
+    (fn,) = lower_src((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     expected = """\
 task report(topic: string) -> bool
       raw = call web_search(topic)             ; line 6
@@ -68,7 +68,7 @@ task report(topic: string) -> bool
 
 
 def test_valid_report_columns():
-    (fn,) = lower_src((EXAMPLES / "valid_report.as").read_text())
+    (fn,) = lower_src((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     positions = [(type(i).__name__, i.line, i.col) for i in fn.instrs]
     assert positions == [
         ("Call", 6, 15),  # web_search
@@ -87,7 +87,7 @@ def test_valid_report_columns():
 
 
 def test_valid_report_operands():
-    (fn,) = lower_src((EXAMPLES / "valid_report.as").read_text())
+    (fn,) = lower_src((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     call = fn.instrs[0]
     assert isinstance(call, ir.Call)
     assert call.dst == ir.Var("raw") and call.args == [ir.Var("topic")]
@@ -99,7 +99,7 @@ def test_valid_report_operands():
 
 
 def test_runtime_budget_repeat_variable():
-    (fn,) = lower_src((EXAMPLES / "runtime_budget.as").read_text())
+    (fn,) = lower_src((EXAMPLES / "runtime_budget.as").read_text(encoding="utf-8"))
     assert listing(fn) == [
         "t1 = 0",
         "t2 = times",
@@ -120,7 +120,7 @@ def test_runtime_budget_repeat_variable():
 
 
 def test_valid_cleanup_branches_on_let_variable():
-    (fn,) = lower_src((EXAMPLES / "valid_cleanup.as").read_text())
+    (fn,) = lower_src((EXAMPLES / "valid_cleanup.as").read_text(encoding="utf-8"))
     assert listing(fn) == [
         't1 = "Delete " + path',
         't2 = t1 + "?"',
@@ -135,7 +135,7 @@ def test_valid_cleanup_branches_on_let_variable():
 
 
 def test_optimize_demo_listing():
-    (fn,) = lower_src((EXAMPLES / "optimize_demo.as").read_text())
+    (fn,) = lower_src((EXAMPLES / "optimize_demo.as").read_text(encoding="utf-8"))
     assert listing(fn) == [
         "pages = 2 * 3",
         "first = call web_search(topic)",
@@ -470,7 +470,7 @@ def test_code_after_return_is_kept():
 
 
 def test_lowering_is_deterministic():
-    source = (EXAMPLES / "optimize_demo.as").read_text()
+    source = (EXAMPLES / "optimize_demo.as").read_text(encoding="utf-8")
     assert ir_artifact(lower_src(source)) == ir_artifact(lower_src(source))
 
 
@@ -478,7 +478,7 @@ def test_lowering_is_deterministic():
 
 
 def test_ir_artifact_shape():
-    source = (EXAMPLES / "valid_report.as").read_text()
+    source = (EXAMPLES / "valid_report.as").read_text(encoding="utf-8")
     fns = lower_src(source)
     art = ir_artifact(fns)
     assert art["text"] == "\n\n".join(ir.format_function(f) for f in fns)
@@ -515,7 +515,7 @@ def _parseable_examples():
     out = []
     for entry in MANIFEST:
         try:
-            parse(tokenize((EXAMPLES / entry["file"]).read_text()))
+            parse(tokenize((EXAMPLES / entry["file"]).read_text(encoding="utf-8")))
         except CompileError:
             continue
         out.append(entry["file"])
@@ -524,7 +524,7 @@ def _parseable_examples():
 
 @pytest.mark.parametrize("name", _parseable_examples())
 def test_every_parseable_example_lowers(name):
-    source = (EXAMPLES / name).read_text()
+    source = (EXAMPLES / name).read_text(encoding="utf-8")
     if name == "sem_undeclared.as":
         with pytest.raises(KeyError):  # irgen assumes a semantically valid AST
             lower_src(source)

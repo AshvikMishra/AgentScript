@@ -22,7 +22,7 @@ from agentscript.typesys import BOOL, INT
 from agentscript.vm import run
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 RUNNABLE = [e for e in MANIFEST if e["run"] is not None]
 
 STACK_EFFECT = {
@@ -52,7 +52,7 @@ def compile_source(source: str) -> BytecodeProgram:
 
 
 def compile_example(file: str) -> BytecodeProgram:
-    return compile_source((EXAMPLES / file).read_text())
+    return compile_source((EXAMPLES / file).read_text(encoding="utf-8"))
 
 
 def agent_src(body: str, params: str = "x: int", ret: str = "int", permits: str = "web_search, llm", budget: int = 10) -> str:
@@ -216,7 +216,7 @@ def test_every_instruction_carries_ir_location():
 
 
 def test_locations_match_ir_instructions():
-    agent, cfgs = front_end((EXAMPLES / "valid_report.as").read_text())
+    agent, cfgs = front_end((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     code = generate(agent, cfgs).tasks["report"].code
     ir_locs = {(i.line, i.col) for b in cfgs[0].blocks.values() for i in b.instrs}
     assert {(i.line, i.col) for i in code} <= ir_locs
@@ -519,7 +519,7 @@ def _parallelize_first_three_calls(cfg: ir.CFG) -> None:
 
 
 def test_parallel_calls_lowering():
-    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text())
+    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text(encoding="utf-8"))
     _parallelize_first_three_calls(cfgs[0])
     code = generate(agent, cfgs).tasks["scout"].code
     assert [(i.op, i.arg) for i in code[:7]] == [
@@ -536,7 +536,7 @@ def test_parallel_calls_lowering():
 
 
 def test_parallel_demo_runs_one_round_of_three():
-    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text())
+    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text(encoding="utf-8"))
     _parallelize_first_three_calls(cfgs[0])
     prog = generate(agent, cfgs)
     result = run(prog, "scout", {"a": "rust", "b": "go", "c": "zig"}, MockRegistry())
@@ -551,7 +551,7 @@ def test_parallel_demo_runs_one_round_of_three():
 def test_parallel_demo_matches_sequential_value():
     sequential = run_example("parallel_demo.as", "scout", {"a": "rust", "b": "go", "c": "zig"})
     assert sequential.rounds == 4
-    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text())
+    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text(encoding="utf-8"))
     _parallelize_first_three_calls(cfgs[0])
     parallel = run(generate(agent, cfgs), "scout", {"a": "rust", "b": "go", "c": "zig"}, MockRegistry())
     assert parallel.value == sequential.value
@@ -559,7 +559,7 @@ def test_parallel_demo_matches_sequential_value():
 
 def test_parallel_demo_via_scheduler():
     scheduler = pytest.importorskip("agentscript.scheduler")
-    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text())
+    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text(encoding="utf-8"))
     scheduled = [scheduler.schedule(cfg)[0] for cfg in cfgs]
     result = run(generate(agent, scheduled), "scout", {"a": "rust", "b": "go", "c": "zig"}, MockRegistry())
     assert result.rounds == 2
@@ -567,7 +567,7 @@ def test_parallel_demo_via_scheduler():
 
 
 def test_parallel_calls_carry_member_locations():
-    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text())
+    agent, cfgs = front_end((EXAMPLES / "parallel_demo.as").read_text(encoding="utf-8"))
     _parallelize_first_three_calls(cfgs[0])
     code = generate(agent, cfgs).tasks["scout"].code
     group = code[3]

@@ -13,13 +13,13 @@ from agentscript.pipeline import PHASES, CompileResult, compile_source, execute,
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES = ROOT / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 BY_FILE = {e["file"]: e for e in MANIFEST}
 RUNNABLE = [e for e in MANIFEST if e["run"]]
 
 
 def source_of(name: str) -> str:
-    return (EXAMPLES / name).read_text()
+    return (EXAMPLES / name).read_text(encoding="utf-8")
 
 
 def compiled(name: str, parallel: bool = True) -> CompileResult:

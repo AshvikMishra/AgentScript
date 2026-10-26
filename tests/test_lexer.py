@@ -12,7 +12,7 @@ from agentscript.lexer import KEYWORDS, Token, TokenKind, tokenize, tokens_artif
 
 K = TokenKind
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 
 
 def kinds(source: str) -> list[TokenKind]:
@@ -252,13 +252,13 @@ def test_tokens_artifact_text_and_data():
 
 
 def test_tokens_artifact_matches_brief_format():
-    src = (EXAMPLES / "valid_report.as").read_text()
+    src = (EXAMPLES / "valid_report.as").read_text(encoding="utf-8")
     text = tokens_artifact(tokenize(src))["text"]
     assert "  6:5   LET        let" in text.split("\n")
 
 
 def test_tokenize_is_deterministic():
-    src = (EXAMPLES / "valid_report.as").read_text()
+    src = (EXAMPLES / "valid_report.as").read_text(encoding="utf-8")
     assert tokenize(src) == tokenize(src)
 
 
@@ -267,7 +267,7 @@ def test_tokenize_is_deterministic():
 
 @pytest.mark.parametrize("entry", MANIFEST, ids=[e["file"] for e in MANIFEST])
 def test_examples_lex_per_manifest(entry: dict):
-    source = (EXAMPLES / entry["file"]).read_text()
+    source = (EXAMPLES / entry["file"]).read_text(encoding="utf-8")
     expect = entry["expect"]
     if expect and expect["code"] in ("E101", "E102"):
         code, line, col, _ = lex_error(source)

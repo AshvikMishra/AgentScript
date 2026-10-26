@@ -17,7 +17,7 @@ from agentscript.parser import parse
 from agentscript.semantic import analyze
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = {e["file"]: e for e in json.loads((EXAMPLES / "manifest.json").read_text())}
+MANIFEST = {e["file"]: e for e in json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))}
 
 
 def cfgs_of(source: str) -> list[ir.CFG]:
@@ -49,7 +49,7 @@ def reject(body: str, **kw) -> CompileError:
 
 
 def example(name: str) -> str:
-    return (EXAMPLES / name).read_text()
+    return (EXAMPLES / name).read_text(encoding="utf-8")
 
 
 def verdicts(report: ApprovalReport) -> list[str]:

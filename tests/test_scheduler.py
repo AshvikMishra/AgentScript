@@ -26,7 +26,7 @@ from agentscript.semantic import analyze
 from agentscript.typesys import INT
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 
 
 def cfgs_of(source: str) -> list[ir.CFG]:
@@ -36,7 +36,7 @@ def cfgs_of(source: str) -> list[ir.CFG]:
 
 
 def example_cfgs(name: str) -> list[ir.CFG]:
-    return cfgs_of((EXAMPLES / name).read_text())
+    return cfgs_of((EXAMPLES / name).read_text(encoding="utf-8"))
 
 
 def program(body: str, ret: str = "string", params: str = "a: string, b: string", permit: str = "") -> str:

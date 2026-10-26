@@ -18,13 +18,13 @@ from agentscript.pipeline import PHASES
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES = ROOT / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 
 client = TestClient(app)
 
 
 def src(name: str) -> str:
-    return (EXAMPLES / name).read_text()
+    return (EXAMPLES / name).read_text(encoding="utf-8")
 
 
 # ----------------------------------------------------------------- static files
@@ -34,7 +34,7 @@ def test_index_html():
     r = client.get("/")
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/html")
-    assert r.text == (ROOT / "web" / "index.html").read_text()
+    assert r.content == (ROOT / "web" / "index.html").read_bytes()
     assert "/static/app.js" in r.text and "/static/style.css" in r.text
 
 
@@ -43,7 +43,7 @@ def test_static_files(name, ctype):
     r = client.get(f"/static/{name}")
     assert r.status_code == 200
     assert ctype in r.headers["content-type"]
-    assert r.text == (ROOT / "web" / name).read_text()
+    assert r.content == (ROOT / "web" / name).read_bytes()
 
 
 def test_static_missing_is_404():

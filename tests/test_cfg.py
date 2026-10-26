@@ -27,7 +27,7 @@ from agentscript.parser import parse
 from agentscript.typesys import INT
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 
 
 def cfgs_of(source: str) -> list[ir.CFG]:
@@ -81,7 +81,7 @@ def assert_well_formed(cfg: ir.CFG) -> None:
 
 
 def test_valid_report_blocks():
-    (cfg,) = cfgs_of((EXAMPLES / "valid_report.as").read_text())
+    (cfg,) = cfgs_of((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     assert list(cfg.blocks) == ["entry", "L1", "L2"]
     assert texts(cfg.blocks["entry"]) == [
         "raw = call web_search(topic)",
@@ -107,7 +107,7 @@ def test_valid_report_blocks():
 
 
 def test_repeat_loop_blocks():
-    (cfg,) = cfgs_of((EXAMPLES / "runtime_budget.as").read_text())
+    (cfg,) = cfgs_of((EXAMPLES / "runtime_budget.as").read_text(encoding="utf-8"))
     assert shape(cfg) == {
         "entry": (["L1"], []),
         "L1": (["L2", "L3"], ["entry", "L2"]),
@@ -208,7 +208,7 @@ def test_branch_with_identical_targets_lists_pred_once():
 
 
 def test_build_cfg_does_not_mutate_listing():
-    fns = lower(parse(tokenize((EXAMPLES / "valid_report.as").read_text())))
+    fns = lower(parse(tokenize((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))))
     before = [ir.format_instr(i) for i in fns[0].instrs]
     build_cfg(fns[0])
     assert [ir.format_instr(i) for i in fns[0].instrs] == before
@@ -298,7 +298,7 @@ def test_dominators_nested_if():
 
 
 def test_dominators_guard_block_of_valid_cleanup():
-    (cfg,) = cfgs_of((EXAMPLES / "valid_cleanup.as").read_text())
+    (cfg,) = cfgs_of((EXAMPLES / "valid_cleanup.as").read_text(encoding="utf-8"))
     dom = dominators(cfg)
     assert dom["L1"] == {"entry", "L1"}  # the delete_file block is dominated by the guard L1
 
@@ -336,7 +336,7 @@ def test_dominators_diamond_by_hand_ir():
 
 
 def test_format_cfg_valid_report():
-    (cfg,) = cfgs_of((EXAMPLES / "valid_report.as").read_text())
+    (cfg,) = cfgs_of((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     text = format_cfg(cfg)
     lines = text.splitlines()
     assert lines[0] == "task report(topic: string) -> bool"
@@ -380,7 +380,7 @@ def test_cfg_to_dict():
 
 
 def test_mermaid_contains_every_block_and_branch_labels():
-    (cfg,) = cfgs_of((EXAMPLES / "valid_report.as").read_text())
+    (cfg,) = cfgs_of((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     text = cfg_to_mermaid(cfg)
     lines = text.splitlines()
     assert lines[0] == "flowchart TD"
@@ -393,7 +393,7 @@ def test_mermaid_contains_every_block_and_branch_labels():
 
 
 def test_mermaid_escapes_quotes_and_brackets():
-    (cfg,) = cfgs_of((EXAMPLES / "optimize_demo.as").read_text())
+    (cfg,) = cfgs_of((EXAMPLES / "optimize_demo.as").read_text(encoding="utf-8"))
     text = cfg_to_mermaid(cfg)
     for line in text.splitlines()[1:]:
         m = re.fullmatch(r'  B\d+\["(.*)"\]', line)
@@ -428,7 +428,7 @@ def test_mermaid_loop_edges_and_unreachable_class():
 
 
 def test_cfg_artifact_shape():
-    source = (EXAMPLES / "valid_report.as").read_text()
+    source = (EXAMPLES / "valid_report.as").read_text(encoding="utf-8")
     cfgs = cfgs_of(source)
     art = cfg_artifact(cfgs)
     assert art["text"] == format_cfg(cfgs[0])
@@ -458,7 +458,7 @@ def test_cfg_artifact_multiple_tasks():
 
 
 def test_cfg_is_deterministic():
-    source = (EXAMPLES / "optimize_demo.as").read_text()
+    source = (EXAMPLES / "optimize_demo.as").read_text(encoding="utf-8")
     assert cfg_artifact(cfgs_of(source)) == cfg_artifact(cfgs_of(source))
 
 
@@ -469,7 +469,7 @@ def _lowerable_examples():
     out = []
     for entry in MANIFEST:
         try:
-            agent = parse(tokenize((EXAMPLES / entry["file"]).read_text()))
+            agent = parse(tokenize((EXAMPLES / entry["file"]).read_text(encoding="utf-8")))
             lower(agent)
         except (CompileError, KeyError):  # lexer/parser errors; undeclared names
             continue
@@ -483,7 +483,7 @@ def test_most_examples_are_lowerable():
 
 @pytest.mark.parametrize("name", _lowerable_examples())
 def test_every_example_builds_a_well_formed_cfg(name):
-    for cfg in cfgs_of((EXAMPLES / name).read_text()):
+    for cfg in cfgs_of((EXAMPLES / name).read_text(encoding="utf-8")):
         assert_well_formed(cfg)
         targets = set()
         for block in cfg.blocks.values():

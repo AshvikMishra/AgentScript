@@ -14,7 +14,7 @@ from agentscript.parser import parse
 from agentscript.typesys import BOOL, INT, STRING, list_of
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
-MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text())
+MANIFEST = json.loads((EXAMPLES / "manifest.json").read_text(encoding="utf-8"))
 
 
 def parse_src(source: str) -> ast.Agent:
@@ -74,7 +74,7 @@ def syntax_error(source: str) -> tuple[int, int, str]:
 
 
 def test_valid_report_ast_shape_and_positions():
-    agent = parse_src((EXAMPLES / "valid_report.as").read_text())
+    agent = parse_src((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     assert (agent.name, agent.line, agent.col) == ("Assistant", 1, 1)
     assert agent.permitted_tools() == ["web_search", "llm", "sanitize", "send_email", "confirm"]
     (permit,) = agent.permits
@@ -117,7 +117,7 @@ def test_valid_report_ast_shape_and_positions():
 
 
 def test_format_ast_on_valid_report():
-    agent = parse_src((EXAMPLES / "valid_report.as").read_text())
+    agent = parse_src((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     text = ast.format_ast(agent)
     lines = text.split("\n")
     assert lines[0] == "Agent Assistant @1:1"
@@ -135,7 +135,7 @@ def test_format_ast_on_valid_report():
 
 
 def test_ast_to_dict_on_valid_report():
-    agent = parse_src((EXAMPLES / "valid_report.as").read_text())
+    agent = parse_src((EXAMPLES / "valid_report.as").read_text(encoding="utf-8"))
     d = ast.ast_to_dict(agent)
     json.dumps(d)  # JSON-ready
     assert d["node"] == "Agent" and d["name"] == "Assistant"
@@ -150,7 +150,7 @@ def test_ast_to_dict_on_valid_report():
 
 
 def test_parse_is_deterministic():
-    src = (EXAMPLES / "valid_report.as").read_text()
+    src = (EXAMPLES / "valid_report.as").read_text(encoding="utf-8")
     assert parse_src(src) == parse_src(src)
 
 
@@ -526,7 +526,7 @@ def test_parse_requires_eof_terminated_tokens():
 
 @pytest.mark.parametrize("entry", MANIFEST, ids=[e["file"] for e in MANIFEST])
 def test_examples_parse_per_manifest(entry: dict):
-    source = (EXAMPLES / entry["file"]).read_text()
+    source = (EXAMPLES / entry["file"]).read_text(encoding="utf-8")
     expect = entry["expect"]
     code = expect["code"] if expect else None
     if code in ("E101", "E102"):
