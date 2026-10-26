@@ -31,6 +31,7 @@ section of `PRD.md`.
 | [how-it-works/11-parallel-scheduling.md](how-it-works/11-parallel-scheduling.md) | Optional milestone M7: dependency graph and parallel rounds of tool calls |
 | [presentation/demo-script.md](presentation/demo-script.md) | The live demo, step by step: what to open, click, show and say, plus a CLI fallback |
 | [presentation/viva-notes.md](presentation/viva-notes.md) | Likely viva questions with prepared answers, and related work |
+| [presentation/AgentScript.pptx](presentation/AgentScript.pptx) | The slide deck (19 slides: architecture, diagrams, real outputs). Rebuild with `python docs/presentation/build_deck.py` (needs `pip install python-pptx`) |
 | [prompts/](prompts/) | Prompts used to drive the agent sessions that produced these docs; do not edit |
 
 Outside `docs/`: `CLAUDE.md` (instructions for coding agents), `examples/` (demo programs)
