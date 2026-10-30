@@ -19,7 +19,7 @@ OWN-WORLD: Same programme as the editor: signage yellow masthead, black numeral 
 
 STORY: The reader lands, sees the two channels (a rejected program with its real E401, the fixed one compiling), follows the ten gates into how-it-works, and reads each phase with prev/next gates.
 
-FIRST VIEWPORT: Yellow masthead with brand sign, search, Editor, Examples, GitHub, theme. Left rail of division signs. Main: title and one-paragraph answer, then the red/green channel pair side by side with real compiler output, then the ten-gate row linking to phases.
+FIRST VIEWPORT: Yellow masthead with brand sign, search, Editor, Examples, GitHub, theme. Left rail of division signs. Main: title and one-paragraph answer, then the ten-gate row linking to phases, then the red/green channel pair side by side with real compiler output (its header signs visible in the first viewport at 1440x900; amended after the finish review so the gates sit above the fold).
 
 FORM: Arrivals-hall wayfinding, candidate 3 of 7; seed:05378282589929f9. Raise from acetate tab board: one hue per division at full strength, only as an index.
 

@@ -353,7 +353,7 @@
         <a class="nav-link" data-route="examples" href="#/examples"><span class="ic">${ICON.file}</span>Example programs</a>
       </div>`];
     for (const g of groups()) {
-      parts.push(`<section class="division ${divClass(g.name)}"><h2 class="div-head"><span class="chip" aria-hidden="true"></span>${esc(g.name)}</h2>`);
+      parts.push(`<section class="division ${divClass(g.name)}"><h2 class="div-head">${esc(g.name)}</h2>`);
       for (const p of g.pages) {
         parts.push(`<a class="nav-link" data-route="${p.id}" href="${route(p.id)}">${lead(p)}<span>${esc(navTitle(p))}</span></a>`);
       }
@@ -427,24 +427,29 @@
     return `<nav class="gates" aria-label="Previous and next page">${gate(PAGES[i - 1], "prev") || "<span></span>"}${gate(PAGES[i + 1], "next")}</nav>`;
   }
 
-  function crumb(page) {
+  /** The division rides in the H1 itself: a numeral tile for a phase page, a hue square otherwise. */
+  function markTitle(page) {
+    const h1 = main.querySelector(".doc h1");
+    if (!h1) return;
     const n = pageNum(page);
-    const head = firstOf(page.group);
-    return `<nav class="crumb ${divClass(page.group)}" aria-label="Breadcrumb">
-      <a class="sign" href="${route(head.id)}"><span class="dot" aria-hidden="true"></span>${esc(page.group)}</a>
-      ${n ? `<span class="tile" aria-label="Phase ${n}">${n}</span>` : ""}
-      <span class="path">${esc(page.path)}</span>
-    </nav>`;
+    if (n) {
+      const first = h1.firstChild;
+      if (first && first.nodeType === 3) first.nodeValue = first.nodeValue.replace(/^\s*\d\d\s*[.:-]\s*/, "");
+      h1.insertAdjacentHTML("afterbegin", `<span class="tile h1-tile" title="${esc(page.group)}, phase ${n}">${n}</span>`);
+    } else {
+      h1.insertAdjacentHTML("afterbegin", `<span class="h1-chip" title="${esc(page.group)}" aria-hidden="true"></span>`);
+    }
+    h1.classList.add("titled");
   }
 
   async function showDoc(page, anchor) {
     document.title = `${page.title} · AgentScript Docs`;
-    enter(`<div class="sheet">
-      ${crumb(page)}
+    enter(`<div class="sheet ${divClass(page.group)}">
       <article class="doc">${renderMarkdown(page)}</article>
       <p class="src-link">Source: <a href="${DATA.repo}/blob/main/${esc(page.path)}" target="_blank" rel="noopener">${esc(page.path)}</a></p>
       ${pager(page)}
     </div>`, true);
+    markTitle(page);
     markActive(page.id);
     addCopyButtons(main);
     buildToc();
@@ -494,8 +499,16 @@
       .replace(/^(compilation failed)$/m, '<span class="hl-bad">$1</span>')
       .replace(/^(compiled OK)$/m, '<span class="hl-ok">$1</span>')
       .replace(/^(value: true)$/m, '<span class="hl-ok">$1</span>');
-    const omitted = run.cut ? '<span class="omitted">Phase sections before the diagnostics are left out here.</span>' : "";
-    return `<div class="term"><div class="term-cmd"><span>$ ${esc(run.cmd)}</span><span class="exit">exit ${run.exit}</span></div><pre>${omitted}${out}</pre></div>`;
+    const omitted = run.cut ? '<span class="omitted">The phase sections printed before the diagnostics are left out here.</span>' : "";
+    return `<div class="term"><div class="term-cmd"><span class="cmd">$ ${esc(run.cmd)}</span><span class="exit">exit ${run.exit}</span></div><pre>${out}${omitted}</pre></div>`;
+  }
+
+  function transcript(side, runs) {
+    const lines = runs.reduce((n, r) => n + 1 + r.output.split("\n").length, 0);
+    return `<div class="transcript">
+      <div class="term-clip" id="tr-${side}">${runs.map(terminal).join("")}</div>
+      <button type="button" class="term-toggle" aria-expanded="false" aria-controls="tr-${side}">${ICON.chevron}<span class="t-label">Show the full transcript</span><span class="t-count">${lines} lines</span></button>
+    </div>`;
   }
 
   function channel(side) {
@@ -521,7 +534,7 @@
       <div class="ch-body">
         <pre class="listing"><code class="hljs language-agentscript">${listing(L.source, marks, "agentscript")}</code></pre>
         ${note}
-        ${L.runs.map(terminal).join("")}
+        ${transcript(side, L.runs)}
       </div>
     </section>`;
   }
@@ -542,7 +555,7 @@
     enter(`<div class="home">
       <header class="home-head">
         <h1>AgentScript documentation</h1>
-        <p>AgentScript is a tiny language for AI-agent programs, and a ten-stage compiler that rejects unsafe programs before any tool runs. It proves two things with classic compiler analyses: <strong>untrusted data</strong> from <code>web_search</code> or <code>read_file</code> never reaches a privileged tool such as <code>send_email</code> or <code>delete_file</code> without <code>sanitize</code>, and <strong>every irreversible call</strong> sits behind a <code>confirm</code> approval.</p>
+        <p>AgentScript is a tiny language for AI-agent programs and a ten-stage compiler that rejects unsafe programs before any tool runs. It proves that <strong>untrusted data</strong> never reaches a privileged tool without <code>sanitize</code>, and that <strong>every irreversible call</strong> sits behind a <code>confirm</code> approval.</p>
         <div class="go">
           <a class="btn primary" href="${route("how-it-works--00-overview")}">Read the overview ${ICON.arrowR}</a>
           <a class="btn" href="${route("how-it-works--01-language")}">The language</a>
@@ -551,13 +564,14 @@
         </div>
       </header>
 
-      <div class="channels">${channel("red")}${channel("green")}</div>
-
-      <h2 id="gates">The ten gates</h2>
-      <p class="sub">Every program passes these stages in order, and each one prints its own artifact. Taint and approval are the two safety checks. Select a stage to read how it works.</p>
+      <h2 id="gates" class="first">The ten gates</h2>
+      <p class="sub">Every program passes these stages in order, and each prints its own artifact. Taint and approval are the two safety checks.</p>
       <ol class="gates10">${STAGES.map(([n, name, what, codes, id, cls]) =>
         `<li class="${cls || ""}"><a href="${route(id)}"><span class="tile">${n}</span><span class="g-name">${name}</span><span class="g-what">${what}</span><span class="g-codes">${codes || "&nbsp;"}</span></a></li>`).join("")}</ol>
       <p class="order-note"><b>Ordering rule.</b> Permission, budget, taint and approval checks run before the optimizer, so a guarantee never depends on what the optimizer removes.</p>
+
+      <h2 id="channels" class="tight">One line apart</h2>
+      <div class="channels">${channel("red")}${channel("green")}</div>
 
       <h2 id="index">All documents</h2>
       <p class="sub">The corrected PRD is the source of truth; the how-it-works series explains each phase with real compiler output.</p>
@@ -573,6 +587,12 @@
         <a class="btn" href="${DATA.repo}" target="_blank" rel="noopener">${ICON.ext}Source on GitHub</a>
       </div>
     </div>`);
+    main.querySelectorAll(".term-toggle").forEach((b) => b.addEventListener("click", () => {
+      const open = b.getAttribute("aria-expanded") !== "true";
+      b.setAttribute("aria-expanded", String(open));
+      b.closest(".transcript").classList.toggle("open", open);
+      b.querySelector(".t-label").textContent = open ? "Hide the transcript" : "Show the full transcript";
+    }));
     markActive("home");
     tocEl.innerHTML = "";
     window.scrollTo(0, 0);
@@ -604,7 +624,6 @@
     const count = (k) => DATA.examples.filter((e) => k === "all" || exKind(e) === k).length;
     const list = DATA.examples.filter((e) => exFilter === "all" || exKind(e) === exFilter);
     enter(`<div class="sheet wide">
-      <nav class="crumb d-ref" aria-label="Breadcrumb"><a class="sign" href="#/examples">Example programs</a><span class="path">examples/manifest.json</span></nav>
       <article class="doc">
       <h1>Example programs</h1>
       <p>One valid program per feature plus one failing program per error type. These are the files the editor's example picker loads and the tests check. Open a program to see its source; the marked line is where the expected diagnostic points.</p>
@@ -631,6 +650,16 @@
     main.querySelectorAll("details.ex").forEach((d) => d.addEventListener("toggle", () => {
       if (d.open) history.replaceState(null, "", "#/examples/" + d.id.slice(3));
     }));
+    // one badge column for every row, as wide as the widest badge stack
+    const fitBadges = () => {
+      const exl = main.querySelector(".ex-list");
+      if (!exl) return;
+      exl.style.removeProperty("--badge-w");
+      const w = Math.max(0, ...[...exl.querySelectorAll(".badges")].map((b) => b.offsetWidth));
+      if (w) exl.style.setProperty("--badge-w", Math.ceil(w) + "px");
+    };
+    fitBadges();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitBadges);
     markActive("examples");
     tocEl.innerHTML = "";
     const target = openFile && document.getElementById("ex-" + openFile);
