@@ -58,11 +58,11 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --ground: #0f1114;
-    --panel: #181b20;
-    --panel-2: #20242a;
-    --rule: #2c3139;
-    --rule-strong: #3c424c;
+    --ground: #0a0a0b;
+    --panel: #141415;
+    --panel-2: #1c1c1e;
+    --rule: #2a2a2c;
+    --rule-strong: #3d3d40;
     --ink: #eceef1;
     --ink-2: #b9bec7;
     --ink-3: #8f96a2;
@@ -94,11 +94,11 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ground: #0f1114;
-  --panel: #181b20;
-  --panel-2: #20242a;
-  --rule: #2c3139;
-  --rule-strong: #3c424c;
+  --ground: #0a0a0b;
+  --panel: #141415;
+  --panel-2: #1c1c1e;
+  --rule: #2a2a2c;
+  --rule-strong: #3d3d40;
   --ink: #eceef1;
   --ink-2: #b9bec7;
   --ink-3: #8f96a2;
@@ -181,8 +181,12 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2.5px solid var(--blue-text);
   outline-offset: 2px;
+}
+
+.stage-chip:focus-visible {
+  outline-offset: -4px;
 }
 
 button,
@@ -1234,7 +1238,7 @@ pre {
   gap: 7px;
   flex: none;
   height: 40px;
-  padding: 0 9px;
+  padding: 0 6px;
   border: 0;
   background: transparent;
   color: var(--ink-2);
@@ -1256,6 +1260,40 @@ pre {
 
 .tab:focus-visible {
   outline-offset: -3px;
+}
+
+.tab-group {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.tab-group + .tab-group {
+  margin-left: 10px;
+}
+
+.tab-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px 0 6px;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tab-group-gates {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: var(--tile);
+  color: var(--tile-ink);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .tab-dot {
@@ -1731,7 +1769,7 @@ pre {
 }
 
 .cell-clip {
-  max-width: 340px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2016,7 +2054,18 @@ button.chip:hover {
 
 /* ------------------------------------------------------------------ responsive */
 
+/* Division names need ~160px more than the pane has below 1500px wide; the gate tiles stay. */
+@media (max-width: 1500px) {
+  .tab-group-name {
+    display: none;
+  }
+}
+
 @media (max-width: 1360px) {
+  .tab {
+    padding: 0 5px;
+  }
+
   .stage-icon {
     display: none;
   }
@@ -2094,10 +2143,25 @@ button.chip:hover {
     padding: 8px 6px;
   }
 
-  .mast-sep,
-  .zoom {
+  .mast-sep {
     display: none;
   }
+
+  .mast-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 6px;
+  }
+
+  .brand-name {
+    font-size: 19px;
+  }
+
+  .example-desc {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+
 
   .workspace {
     padding: 10px 8px;
@@ -2159,5 +2223,22 @@ button.chip:hover {
   .pane-head {
     flex-direction: column;
     gap: 4px;
+  }
+}
+
+/* the call log has seven columns: keep it inside the output pane at desktop widths */
+.table-calls th,
+.table-calls td {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
+.table-calls .cell-clip {
+  max-width: 150px;
+}
+
+@media (max-width: 480px) {
+  .mast-link[href^="https://"] {
+    display: none;
   }
 }

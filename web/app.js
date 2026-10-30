@@ -30,18 +30,27 @@
   ];
 
   const TABS = [
-    { id: "errors", label: "Errors" },
-    { id: "tokens", label: "Tokens", artifact: "tokens", stage: "lexer" },
-    { id: "ast", label: "AST", artifact: "ast", stage: "parser" },
-    { id: "symbols", label: "Symbols", artifact: "symbols", stage: "semantic" },
-    { id: "ir", label: "IR", artifact: "ir", stage: "ir" },
-    { id: "cfg", label: "CFG", artifact: "cfg", stage: "ir" },
-    { id: "taint", label: "Taint", artifact: "taint", stage: "taint" },
-    { id: "approval", label: "Approval", artifact: "approval", stage: "approval" },
-    { id: "optimized", label: "Optimized IR", artifact: "optimized_ir", stage: "optimizer" },
-    { id: "rounds", label: "Rounds", artifact: "schedule", stage: "scheduler" },
-    { id: "bytecode", label: "Bytecode", artifact: "bytecode", stage: "codegen" },
-    { id: "output", label: "Output", stage: "vm" },
+    { id: "errors", label: "Errors", group: "result" },
+    { id: "tokens", label: "Tokens", artifact: "tokens", stage: "lexer", group: "front" },
+    { id: "ast", label: "AST", artifact: "ast", stage: "parser", group: "front" },
+    { id: "symbols", label: "Symbols", artifact: "symbols", stage: "semantic", group: "front" },
+    { id: "ir", label: "IR", artifact: "ir", stage: "ir", group: "middle" },
+    { id: "cfg", label: "CFG", artifact: "cfg", stage: "ir", group: "middle" },
+    { id: "taint", label: "Taint", artifact: "taint", stage: "taint", group: "middle" },
+    { id: "approval", label: "Approval", artifact: "approval", stage: "approval", group: "middle" },
+    { id: "optimized", label: "Optimized IR", artifact: "optimized_ir", stage: "optimizer", group: "back" },
+    { id: "rounds", label: "Rounds", artifact: "schedule", stage: "scheduler", group: "back" },
+    { id: "bytecode", label: "Bytecode", artifact: "bytecode", stage: "codegen", group: "back" },
+    { id: "output", label: "Output", stage: "vm", group: "run" },
+  ];
+
+  // Tab groups follow the gate numbers, so each tab can be traced back to its stage.
+  const TAB_GROUPS = [
+    { id: "result", gates: null, label: null },
+    { id: "front", gates: "1–3", label: "Front end" },
+    { id: "middle", gates: "4–6", label: "Analysis" },
+    { id: "back", gates: "7–9", label: "Back end" },
+    { id: "run", gates: "10", label: "Run" },
   ];
 
   const TWO_CHAR_OPS = ["->", "==", "!=", "<=", ">="];
@@ -362,6 +371,7 @@
     dash: "M6 12h12",
     arrow: "M4 12h13M12 5l7 7-7 7",
     stop: "M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2zM8 12h8",
+    noentry: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM7 12h10",
     play: "M7 4.5v15l12-7.5z",
     pause: "M8 5v14M16 5v14",
     busy: "M12 3a9 9 0 1 0 9 9",
@@ -433,7 +443,8 @@
     window.setTimeout(() => el.remove(), 7000);
   }
 
-  const CHANNEL_ICON = { ok: "check", warning: "warn", error: "stop", busy: "busy" };
+  // Wayfinding signs: cleared programs go "this way", rejected ones meet a no-entry sign.
+  const CHANNEL_ICON = { ok: "arrow", warning: "warn", error: "noentry", busy: "busy" };
 
   /** The channel sign under the gates: green when cleared, red when stopped. */
   function setStatus(text, kind) {
@@ -700,8 +711,17 @@
   function buildTabs() {
     const bar = $("#tabbar");
     const panels = $("#panels");
+    const groupEls = new Map();
+    for (const g of TAB_GROUPS) {
+      const el = h("div", { class: "tab-group", role: "presentation", title: g.label ? "Gates " + g.gates + ": " + g.label : null },
+        g.label ? h("span", { class: "tab-group-label", "aria-hidden": "true" },
+          h("span", { class: "tab-group-gates", text: g.gates }),
+          h("span", { class: "tab-group-name", text: g.label })) : null);
+      groupEls.set(g.id, el);
+      bar.appendChild(el);
+    }
     for (const t of TABS) {
-      bar.appendChild(h("button", {
+      groupEls.get(t.group).appendChild(h("button", {
         type: "button", class: "tab", role: "tab", id: "tab-" + t.id, "aria-controls": "panel-" + t.id,
         "aria-selected": "false", tabindex: "-1", dataset: { tab: t.id },
         onclick: () => activateTab(t.id),
@@ -874,7 +894,7 @@
       counts.errors + " error" + (counts.errors === 1 ? "" : "s") + ", " + counts.warnings + " warning" + (counts.warnings === 1 ? "" : "s") +
       (diags.length ? " · click one to jump to it in the editor" : "")));
     if (diags.length === 0) {
-      panel.appendChild(emptyState("check", "No errors or warnings", state.run ? "The program compiled and the run finished cleanly." : "Every compile-time check passed."));
+      panel.appendChild(emptyState("arrow", "Nothing to declare", state.run ? "No errors or warnings: the program compiled and the run finished cleanly." : "No errors or warnings: every compile-time check passed."));
       return;
     }
     panel.appendChild(h("div", { class: "diag-list" }, diags.map((d, i) => diagnosticCard(d, i))));
