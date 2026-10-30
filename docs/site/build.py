@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 SITE = Path(__file__).resolve().parent
@@ -49,6 +51,49 @@ def doc_id(rel: str) -> str:
     return rel.removesuffix(".md").replace("/", "--").lower()
 
 
+# The landing page shows these two programs and the compiler's real output for them. The output is
+# produced here by running the compiler (never typed by hand) and cached in src/landing.json so the
+# site still builds on a machine where the compiler cannot run.
+LANDING = {
+    "red": {"file": "taint_injection.as", "cmds": [["compile"]]},
+    "green": {"file": "valid_report.as",
+              "cmds": [["compile"], ["run", "--task", "report", "--args", '{"topic": "AI safety"}']]},
+}
+LANDING_CACHE = SRC / "landing.json"
+
+
+def tail_from(text: str, marker: str) -> tuple[str, bool]:
+    """Keep the output from the last `marker` line on; report whether anything was cut."""
+    i = text.rfind(marker)
+    return (text[i:], True) if i > 0 else (text, False)
+
+
+def landing() -> dict:
+    out = {}
+    try:
+        for side, spec in LANDING.items():
+            rel = "examples/" + spec["file"]
+            runs = []
+            for cmd in spec["cmds"]:
+                argv = [sys.executable, "-m", "agentscript", cmd[0], rel, *cmd[1:]]
+                proc = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, timeout=60)
+                text = proc.stdout.rstrip("\n")
+                if not text:
+                    raise RuntimeError(proc.stderr.strip() or "no output")
+                cut = False
+                if cmd[0] == "compile":
+                    text, cut = tail_from(text, "== diagnostics ==")
+                shown = " ".join(a if " " not in a and "{" not in a else "'" + a + "'" for a in cmd[1:])
+                runs.append({"cmd": f"python -m agentscript {cmd[0]} {rel}" + (" " + shown if shown else ""),
+                             "exit": proc.returncode, "output": text, "cut": cut})
+            out[side] = {"file": spec["file"], "source": (ROOT / rel).read_text(encoding="utf-8"), "runs": runs}
+        LANDING_CACHE.write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    except Exception as exc:  # compiler unavailable: fall back to the last real output
+        print(f"note: could not run the compiler ({exc}); using {LANDING_CACHE.name}", file=sys.stderr)
+        out = json.loads(LANDING_CACHE.read_text(encoding="utf-8"))
+    return out
+
+
 def collect() -> dict:
     pages = []
     for group, rel, title in PAGES:
@@ -69,7 +114,7 @@ def collect() -> dict:
     for entry in manifest:
         src = (ROOT / "examples" / entry["file"]).read_text(encoding="utf-8")
         examples.append({**entry, "source": src})
-    return {"repo": REPO_URL, "pages": pages, "examples": examples}
+    return {"repo": REPO_URL, "pages": pages, "examples": examples, "landing": landing()}
 
 
 def build() -> Path:
