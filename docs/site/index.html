@@ -290,7 +290,7 @@ a.sign:hover { text-decoration: underline; text-underline-offset: .2em; }
 .doc .anchor { margin-left: 8px; color: var(--ink-3); font-weight: 400; text-decoration: none; opacity: 0; }
 .doc h2:hover .anchor, .doc h3:hover .anchor, .doc .anchor:focus-visible { opacity: 1; }
 .doc p { margin: 0 0 1em; }
-.doc p, .doc li, .doc blockquote { max-width: 39em; }
+.doc p, .doc li, .doc blockquote { max-width: 33em; }
 .doc ul, .doc ol { padding-left: 1.35em; margin: 0 0 1em; }
 .doc li { margin: .3em 0; }
 .doc li::marker { color: var(--ink-3); }
@@ -359,8 +359,9 @@ pre:hover .copy-btn, .copy-btn:focus-visible, .copy-btn.done { opacity: 1; }
   background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r-2);
   overflow-x: auto; text-align: center;
 }
-.mermaid-wrap pre.mermaid { margin: 0; background: none; border: 0; font: 13px var(--font-mono); color: var(--ink-2); text-align: left; white-space: pre; }
+.mermaid-wrap pre.mermaid { overflow: visible; display: inline-block; margin: 0; background: none; border: 0; font: 13px var(--font-mono); color: var(--ink-2); text-align: left; white-space: pre; }
 .mermaid-wrap svg { height: auto; }
+.wide-note { margin: 1.3em 0 -0.8em; color: var(--ink-3); font-size: 14px; }
 
 .src-link { margin-top: 36px; font-size: 14px; color: var(--ink-3); }
 .src-link a { font-family: var(--font-mono); font-size: 13.5px; }
@@ -982,6 +983,13 @@ pre:hover .copy-btn, .copy-btn:focus-visible, .copy-btn.done { opacity: 1; }
           const svg = n.querySelector("svg");
           const w = svg && parseFloat(svg.style.maxWidth);
           if (w) { svg.style.width = w + "px"; svg.style.maxWidth = "none"; }
+          const wrap = n.closest(".mermaid-wrap");
+          if (wrap && wrap.scrollWidth > wrap.clientWidth + 1 && !wrap.previousElementSibling?.classList.contains("wide-note")) {
+            const note = document.createElement("p");
+            note.className = "wide-note";
+            note.textContent = "Wide diagram: scroll sideways inside the frame to see all of it.";
+            wrap.before(note);
+          }
         }
       } catch (e) {
         console.info("mermaid", e);
@@ -1252,7 +1260,7 @@ pre:hover .copy-btn, .copy-btn:focus-visible, .copy-btn.done { opacity: 1; }
       <h2 id="gates" class="first">The ten gates</h2>
       <p class="sub">Every program passes these stages in order, and each prints its own artifact. Taint and approval are the two safety checks.</p>
       <ol class="gates10">${STAGES.map(([n, name, what, codes, id, cls]) =>
-        `<li class="${cls || ""}"><a href="${route(id)}"><span class="tile">${n}</span><span class="g-name">${name}</span><span class="g-what">${what}</span><span class="g-codes">${codes || "&nbsp;"}</span></a></li>`).join("")}</ol>
+        `<li class="${cls || ""}"><a href="${route(id)}"><span class="tile">Stage ${Number(n)}</span><span class="g-name">${name}</span><span class="g-what">${what}</span><span class="g-codes">${codes || "&nbsp;"}</span></a></li>`).join("")}</ol>
       <p class="order-note"><b>Ordering rule.</b> Permission, budget, taint and approval checks run before the optimizer, so a guarantee never depends on what the optimizer removes.</p>
 
       <h2 id="channels" class="tight">One line apart</h2>

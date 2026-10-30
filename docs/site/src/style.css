@@ -276,7 +276,7 @@ a.sign:hover { text-decoration: underline; text-underline-offset: .2em; }
 .doc .anchor { margin-left: 8px; color: var(--ink-3); font-weight: 400; text-decoration: none; opacity: 0; }
 .doc h2:hover .anchor, .doc h3:hover .anchor, .doc .anchor:focus-visible { opacity: 1; }
 .doc p { margin: 0 0 1em; }
-.doc p, .doc li, .doc blockquote { max-width: 39em; }
+.doc p, .doc li, .doc blockquote { max-width: 33em; }
 .doc ul, .doc ol { padding-left: 1.35em; margin: 0 0 1em; }
 .doc li { margin: .3em 0; }
 .doc li::marker { color: var(--ink-3); }
@@ -345,8 +345,9 @@ pre:hover .copy-btn, .copy-btn:focus-visible, .copy-btn.done { opacity: 1; }
   background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r-2);
   overflow-x: auto; text-align: center;
 }
-.mermaid-wrap pre.mermaid { margin: 0; background: none; border: 0; font: 13px var(--font-mono); color: var(--ink-2); text-align: left; white-space: pre; }
+.mermaid-wrap pre.mermaid { overflow: visible; display: inline-block; margin: 0; background: none; border: 0; font: 13px var(--font-mono); color: var(--ink-2); text-align: left; white-space: pre; }
 .mermaid-wrap svg { height: auto; }
+.wide-note { margin: 1.3em 0 -0.8em; color: var(--ink-3); font-size: 14px; }
 
 .src-link { margin-top: 36px; font-size: 14px; color: var(--ink-3); }
 .src-link a { font-family: var(--font-mono); font-size: 13.5px; }

@@ -17,7 +17,7 @@ THESIS: The documentation is the terminal's wayfinding: you always know which di
 
 OWN-WORLD: Same programme as the editor: signage yellow masthead, black numeral tiles, terminal-grey ground, white reading sheet. Division hues as an index: Start here green, Specification blue, How it works yellow, Presentation and Reference ink. Atkinson Hyperlegible Next (reading and headings), Atkinson Hyperlegible Mono (code).
 
-STORY: The reader lands, sees the two channels (a rejected program with its real E401, the fixed one compiling), follows the ten gates into how-it-works, and reads each phase with prev/next gates.
+STORY: The reader lands, reads the one-paragraph answer, sees the ten gates (stages 1–10, each linking to its how-it-works page), then the two channels just below (a rejected program with its real E401, the fixed one compiling), and reads each phase with prev/next gates.
 
 FIRST VIEWPORT: Yellow masthead with brand sign, search, Editor, Examples, GitHub, theme. Left rail of division signs. Main: title and one-paragraph answer, then the ten-gate row linking to phases, then the red/green channel pair side by side with real compiler output (its header signs visible in the first viewport at 1440x900; amended after the finish review so the gates sit above the fold).
 

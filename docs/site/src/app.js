@@ -297,6 +297,13 @@
           const svg = n.querySelector("svg");
           const w = svg && parseFloat(svg.style.maxWidth);
           if (w) { svg.style.width = w + "px"; svg.style.maxWidth = "none"; }
+          const wrap = n.closest(".mermaid-wrap");
+          if (wrap && wrap.scrollWidth > wrap.clientWidth + 1 && !wrap.previousElementSibling?.classList.contains("wide-note")) {
+            const note = document.createElement("p");
+            note.className = "wide-note";
+            note.textContent = "Wide diagram: scroll sideways inside the frame to see all of it.";
+            wrap.before(note);
+          }
         }
       } catch (e) {
         console.info("mermaid", e);
@@ -567,7 +574,7 @@
       <h2 id="gates" class="first">The ten gates</h2>
       <p class="sub">Every program passes these stages in order, and each prints its own artifact. Taint and approval are the two safety checks.</p>
       <ol class="gates10">${STAGES.map(([n, name, what, codes, id, cls]) =>
-        `<li class="${cls || ""}"><a href="${route(id)}"><span class="tile">${n}</span><span class="g-name">${name}</span><span class="g-what">${what}</span><span class="g-codes">${codes || "&nbsp;"}</span></a></li>`).join("")}</ol>
+        `<li class="${cls || ""}"><a href="${route(id)}"><span class="tile">Stage ${Number(n)}</span><span class="g-name">${name}</span><span class="g-what">${what}</span><span class="g-codes">${codes || "&nbsp;"}</span></a></li>`).join("")}</ol>
       <p class="order-note"><b>Ordering rule.</b> Permission, budget, taint and approval checks run before the optimizer, so a guarantee never depends on what the optimizer removes.</p>
 
       <h2 id="channels" class="tight">One line apart</h2>
