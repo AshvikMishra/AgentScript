@@ -1,0 +1,943 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T12:17:27+00:00",
+  "title": "Design System: AgentScript",
+  "extensions": {
+    "colorMeta": {
+      "signage-yellow": {
+        "role": "primary",
+        "displayName": "Signage Yellow",
+        "canonical": "#ffc917",
+        "cssVar": "--sign",
+        "tonalRamp": [
+          "#130900",
+          "#352100",
+          "#5b3c00",
+          "#855800",
+          "#a87a00",
+          "#c3a143",
+          "#dfc78a",
+          "#fbeecb"
+        ]
+      },
+      "sign-ink": {
+        "role": "primary",
+        "displayName": "Sign Ink",
+        "canonical": "#16181d",
+        "cssVar": "--sign-ink",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242528",
+          "#404246",
+          "#5f6167",
+          "#808288",
+          "#a3a5aa",
+          "#c8c9cc",
+          "#edeef0"
+        ]
+      },
+      "tile-black": {
+        "role": "primary",
+        "displayName": "Tile Black",
+        "canonical": "#16181d",
+        "cssVar": "--tile",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242528",
+          "#404246",
+          "#5f6167",
+          "#808288",
+          "#a3a5aa",
+          "#c8c9cc",
+          "#edeef0"
+        ]
+      },
+      "tile-numeral": {
+        "role": "primary",
+        "displayName": "Tile Numeral",
+        "canonical": "#ffc917",
+        "cssVar": "--tile-ink",
+        "tonalRamp": [
+          "#130900",
+          "#352100",
+          "#5b3c00",
+          "#855800",
+          "#a87a00",
+          "#c3a143",
+          "#dfc78a",
+          "#fbeecb"
+        ]
+      },
+      "channel-green": {
+        "role": "secondary",
+        "displayName": "Channel Green",
+        "canonical": "#00804a",
+        "cssVar": "--green",
+        "tonalRamp": [
+          "#000f05",
+          "#022e18",
+          "#074f2d",
+          "#0f7444",
+          "#3e9665",
+          "#76b68e",
+          "#aad6b9",
+          "#ddf6e5"
+        ]
+      },
+      "channel-green-wash": {
+        "role": "secondary",
+        "displayName": "Green Channel Wash",
+        "canonical": "#e2f2e9",
+        "cssVar": "--green-wash",
+        "tonalRamp": [
+          "#090c0a",
+          "#212723",
+          "#3c4440",
+          "#58655e",
+          "#79867f",
+          "#9ea8a2",
+          "#c4cbc7",
+          "#ebf0ed"
+        ]
+      },
+      "channel-green-text": {
+        "role": "secondary",
+        "displayName": "Green Channel Text",
+        "canonical": "#006b3e",
+        "cssVar": "--green-text",
+        "tonalRamp": [
+          "#020f06",
+          "#092d1a",
+          "#164e31",
+          "#247249",
+          "#4a9469",
+          "#7db491",
+          "#aed4bb",
+          "#dff5e6"
+        ]
+      },
+      "channel-red": {
+        "role": "secondary",
+        "displayName": "Channel Red",
+        "canonical": "#cc1f2d",
+        "cssVar": "--red",
+        "tonalRamp": [
+          "#1d0102",
+          "#4a060a",
+          "#7c1018",
+          "#b21c27",
+          "#da4848",
+          "#f07f79",
+          "#ffb0aa",
+          "#ffe1dc"
+        ]
+      },
+      "channel-red-wash": {
+        "role": "secondary",
+        "displayName": "Red Channel Wash",
+        "canonical": "#fbe5e6",
+        "cssVar": "--red-wash",
+        "tonalRamp": [
+          "#0e0a0a",
+          "#2a2323",
+          "#4a3f3f",
+          "#6d5c5d",
+          "#8f7d7e",
+          "#afa1a2",
+          "#d1c6c7",
+          "#f3eded"
+        ]
+      },
+      "channel-red-text": {
+        "role": "secondary",
+        "displayName": "Red Channel Text",
+        "canonical": "#b01a27",
+        "cssVar": "--red-text",
+        "tonalRamp": [
+          "#1c0203",
+          "#470c0e",
+          "#771b1e",
+          "#ab2b30",
+          "#d25250",
+          "#e9847e",
+          "#fdb3ae",
+          "#ffe2de"
+        ]
+      },
+      "mandatory-blue": {
+        "role": "tertiary",
+        "displayName": "Mandatory Blue",
+        "canonical": "#1d5fbf",
+        "cssVar": "--blue",
+        "tonalRamp": [
+          "#020a1e",
+          "#0a244b",
+          "#17407d",
+          "#255eb3",
+          "#4781d9",
+          "#79a6ec",
+          "#aacbfd",
+          "#ddf0ff"
+        ]
+      },
+      "mandatory-blue-wash": {
+        "role": "tertiary",
+        "displayName": "Mandatory Blue Wash",
+        "canonical": "#e3ebf8",
+        "cssVar": "--blue-wash",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#22252a",
+          "#3e4249",
+          "#5b626b",
+          "#7c838d",
+          "#a0a5ae",
+          "#c6c9cf",
+          "#eceff2"
+        ]
+      },
+      "mandatory-blue-text": {
+        "role": "tertiary",
+        "displayName": "Mandatory Blue Text",
+        "canonical": "#1a55ab",
+        "cssVar": "--blue-text",
+        "tonalRamp": [
+          "#020b1c",
+          "#0d2447",
+          "#1c4178",
+          "#2c5fac",
+          "#4d82d2",
+          "#7da6e6",
+          "#adcbf9",
+          "#def0ff"
+        ]
+      },
+      "amber-wash": {
+        "role": "tertiary",
+        "displayName": "Amber Wash",
+        "canonical": "#fff3c8",
+        "cssVar": "--amber-wash",
+        "tonalRamp": [
+          "#0d0b05",
+          "#292515",
+          "#49422a",
+          "#6b613f",
+          "#8c825f",
+          "#ada58a",
+          "#cfc9b6",
+          "#f2efe3"
+        ]
+      },
+      "amber-text": {
+        "role": "tertiary",
+        "displayName": "Amber Text",
+        "canonical": "#7a5a00",
+        "cssVar": "--amber-text",
+        "tonalRamp": [
+          "#100a01",
+          "#302305",
+          "#533e0e",
+          "#795c19",
+          "#9b7e3e",
+          "#b9a273",
+          "#d8c7a6",
+          "#f7edda"
+        ]
+      },
+      "amber-line": {
+        "role": "tertiary",
+        "displayName": "Amber Line",
+        "canonical": "#c08a00",
+        "cssVar": "--amber-line",
+        "tonalRamp": [
+          "#130900",
+          "#352000",
+          "#5b3b00",
+          "#855700",
+          "#a87907",
+          "#c49f5d",
+          "#e0c598",
+          "#fcecd3"
+        ]
+      },
+      "on-channel": {
+        "role": "neutral",
+        "displayName": "On-Channel White",
+        "canonical": "#ffffff",
+        "cssVar": "--green-ink / --red-ink / --blue-ink",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "terminal-grey": {
+        "role": "neutral",
+        "displayName": "Terminal Grey",
+        "canonical": "#e9ebee",
+        "cssVar": "--ground",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414244",
+          "#606164",
+          "#818285",
+          "#a4a5a7",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel White",
+        "canonical": "#ffffff",
+        "cssVar": "--panel",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Panel Step",
+        "canonical": "#f4f5f7",
+        "cssVar": "--panel-2",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#a4a5a6",
+          "#c9c9ca",
+          "#eeeeef"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline Rule",
+        "canonical": "#d3d7dd",
+        "cssVar": "--rule",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242527",
+          "#404245",
+          "#5e6166",
+          "#7f8387",
+          "#a3a5a9",
+          "#c7c9cc",
+          "#edeef0"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule",
+        "canonical": "#b7bcc5",
+        "cssVar": "--rule-strong",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232528",
+          "#3f4247",
+          "#5d6169",
+          "#7e828a",
+          "#a2a5ab",
+          "#c7c9ce",
+          "#edeef1"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#16181d",
+        "cssVar": "--ink",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242528",
+          "#404246",
+          "#5f6167",
+          "#808288",
+          "#a3a5aa",
+          "#c8c9cc",
+          "#edeef0"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink Secondary",
+        "canonical": "#464c57",
+        "cssVar": "--ink-2",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#23252a",
+          "#3e424a",
+          "#5c616c",
+          "#7d838d",
+          "#a0a5ae",
+          "#c6c9d0",
+          "#eceef2"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink Tertiary",
+        "canonical": "#636a77",
+        "cssVar": "--ink-3",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#22252a",
+          "#3e424a",
+          "#5b616d",
+          "#7c838f",
+          "#a0a5af",
+          "#c5c9d0",
+          "#eceef3"
+        ]
+      },
+      "night-ground": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "canonical": "#0a0a0b",
+        "cssVar": "--ground (dark)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424243",
+          "#616162",
+          "#828283",
+          "#a5a5a6",
+          "#c9c9ca",
+          "#eeeeef"
+        ]
+      },
+      "night-panel": {
+        "role": "neutral",
+        "displayName": "Night Panel",
+        "canonical": "#141415",
+        "cssVar": "--panel (dark)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424243",
+          "#616162",
+          "#828283",
+          "#a5a5a6",
+          "#c9c9ca",
+          "#eeeeef"
+        ]
+      },
+      "night-panel-2": {
+        "role": "neutral",
+        "displayName": "Night Panel 2",
+        "canonical": "#1c1c1e",
+        "cssVar": "--panel-2 (dark)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#252526",
+          "#424243",
+          "#616163",
+          "#828284",
+          "#a5a5a7",
+          "#c9c9ca",
+          "#eeeeef"
+        ]
+      },
+      "night-rule": {
+        "role": "neutral",
+        "displayName": "Night Rule",
+        "canonical": "#2a2a2c",
+        "cssVar": "--rule (dark)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#252526",
+          "#424243",
+          "#616163",
+          "#828284",
+          "#a5a5a6",
+          "#c9c9ca",
+          "#eeeeef"
+        ]
+      },
+      "night-rule-strong": {
+        "role": "neutral",
+        "displayName": "Night Rule Strong",
+        "canonical": "#3d3d40",
+        "cssVar": "--rule-strong (dark)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#252526",
+          "#424244",
+          "#616164",
+          "#828285",
+          "#a5a5a7",
+          "#c9c9cb",
+          "#eeeeef"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "#eceef1",
+        "cssVar": "--ink (dark)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414244",
+          "#606164",
+          "#818285",
+          "#a4a5a7",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "night-ink-2": {
+        "role": "neutral",
+        "displayName": "Night Ink 2",
+        "canonical": "#b9bec7",
+        "cssVar": "--ink-2 (dark)",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232528",
+          "#3f4247",
+          "#5d6168",
+          "#7e828a",
+          "#a2a5ab",
+          "#c7c9ce",
+          "#edeef1"
+        ]
+      },
+      "night-ink-3": {
+        "role": "neutral",
+        "displayName": "Night Ink 3",
+        "canonical": "#8f96a2",
+        "cssVar": "--ink-3 (dark)",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#22252a",
+          "#3e4249",
+          "#5c626b",
+          "#7d838d",
+          "#a0a5ae",
+          "#c6c9cf",
+          "#eceef2"
+        ]
+      },
+      "night-tile": {
+        "role": "neutral",
+        "displayName": "Night Tile",
+        "canonical": "#000000",
+        "cssVar": "--tile (dark)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "night-green": {
+        "role": "secondary",
+        "displayName": "Night Green",
+        "canonical": "#17794b",
+        "cssVar": "--green (dark)",
+        "tonalRamp": [
+          "#010f06",
+          "#082d1a",
+          "#144e31",
+          "#217249",
+          "#489569",
+          "#7bb492",
+          "#add4bb",
+          "#dff5e6"
+        ]
+      },
+      "night-green-text": {
+        "role": "secondary",
+        "displayName": "Night Green Text",
+        "canonical": "#4fd08f",
+        "cssVar": "--green-text (dark)",
+        "tonalRamp": [
+          "#001005",
+          "#002f17",
+          "#00512c",
+          "#007742",
+          "#209a63",
+          "#6ab98c",
+          "#a3d8b8",
+          "#d9f7e4"
+        ]
+      },
+      "night-red": {
+        "role": "secondary",
+        "displayName": "Night Red",
+        "canonical": "#c92f3a",
+        "cssVar": "--red (dark)",
+        "tonalRamp": [
+          "#1c0203",
+          "#480a0f",
+          "#78181f",
+          "#ad2730",
+          "#d54e51",
+          "#ec827f",
+          "#ffb2ae",
+          "#ffe2df"
+        ]
+      },
+      "night-red-text": {
+        "role": "secondary",
+        "displayName": "Night Red Text",
+        "canonical": "#ff7a82",
+        "cssVar": "--red-text (dark)",
+        "tonalRamp": [
+          "#1a0305",
+          "#431116",
+          "#71222a",
+          "#a33540",
+          "#ca5860",
+          "#e2878a",
+          "#f8b5b6",
+          "#ffe3e3"
+        ]
+      },
+      "night-blue": {
+        "role": "secondary",
+        "displayName": "Night Blue",
+        "canonical": "#2f6bd0",
+        "cssVar": "--blue (dark)",
+        "tonalRamp": [
+          "#020a1e",
+          "#0b234c",
+          "#193f7e",
+          "#295db5",
+          "#4a80db",
+          "#7aa5ee",
+          "#abcbfe",
+          "#ddf0ff"
+        ]
+      },
+      "night-blue-text": {
+        "role": "secondary",
+        "displayName": "Night Blue Text",
+        "canonical": "#8db4ff",
+        "cssVar": "--blue-text (dark)",
+        "tonalRamp": [
+          "#050b18",
+          "#162440",
+          "#2b416c",
+          "#415f9c",
+          "#6181c1",
+          "#8ba5d8",
+          "#b6caee",
+          "#e3efff"
+        ]
+      },
+      "night-amber-text": {
+        "role": "secondary",
+        "displayName": "Night Amber Text",
+        "canonical": "#ffd65a",
+        "cssVar": "--amber-text (dark)",
+        "tonalRamp": [
+          "#110a00",
+          "#322300",
+          "#563e00",
+          "#7d5c00",
+          "#a07e00",
+          "#bda356",
+          "#dac895",
+          "#f9eed1"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Docs landing H1 only; doc H1s 2.4rem/1.12."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Doc H2s on a top hairline; landing section heads."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Editor panel titles."
+      },
+      "body": {
+        "displayName": "Reading Body",
+        "purpose": "Docs reading sheet, 33em measure."
+      },
+      "body-ui": {
+        "displayName": "UI Body",
+        "purpose": "Editor base text, tabular numerals."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Gate names, tabs, field labels, masthead links."
+      },
+      "code": {
+        "displayName": "Source Code",
+        "purpose": "Editor source; scaled via --code-size (A-/A+)."
+      },
+      "code-listing": {
+        "displayName": "Listing",
+        "purpose": "Code blocks, listings, args field, terminal transcripts."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Numeral tiles."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-1 (rest)",
+        "value": "0 1px 2px #16181d14, 0 2px 6px #16181d0f",
+        "dark": "0 1px 2px #00000066, 0 2px 8px #0000004d",
+        "purpose": "Panes, reading sheet, docs gate row and channel cards, active rail/TOC item."
+      },
+      {
+        "name": "shadow-2 (float)",
+        "value": "0 8px 28px #16181d29",
+        "dark": "0 10px 32px #000000a0",
+        "purpose": "Toasts (editor). Docs search popover stacks shadow-1 with 0 12px 32px rgba(22,24,29,.16)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Channel sign colour change, meter fill, switch thumb, docs route-in, drawer, carets."
+      },
+      {
+        "name": "state-fast",
+        "value": "0.15s",
+        "purpose": "Hover background and tab colour transitions."
+      },
+      {
+        "name": "channel",
+        "value": "0.25s",
+        "purpose": "Verdict sign colour change."
+      },
+      {
+        "name": "route-in",
+        "value": "160ms",
+        "purpose": "Docs page entry: fade from .35 and 5px rise."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "All animation and transition collapses under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "editor-1500",
+        "value": "1500px"
+      },
+      {
+        "name": "editor-1360",
+        "value": "1360px"
+      },
+      {
+        "name": "editor-1280",
+        "value": "1280px"
+      },
+      {
+        "name": "editor-1080 (stack, gates 5x2)",
+        "value": "1080px"
+      },
+      {
+        "name": "editor-720 (mobile)",
+        "value": "720px"
+      },
+      {
+        "name": "editor-480",
+        "value": "480px"
+      },
+      {
+        "name": "docs-1240 (TOC off, gates 5x2)",
+        "value": "1240px"
+      },
+      {
+        "name": "docs-980 (channels stack)",
+        "value": "980px"
+      },
+      {
+        "name": "docs-860 (rail drawer)",
+        "value": "860px"
+      },
+      {
+        "name": "docs-560 (gates 2-col)",
+        "value": "560px"
+      }
+    ],
+    "focus": [
+      {
+        "name": "editor",
+        "value": "outline: 2.5px solid var(--blue-text); outline-offset: 2px"
+      },
+      {
+        "name": "docs",
+        "value": "outline: 2px solid var(--blue); outline-offset: 2px; on masthead outline-color: var(--sign-ink)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Compile Button",
+      "kind": "button",
+      "refersTo": "button-compile",
+      "description": "Primary editor action: tile black with yellow label and shortcut keys.",
+      "html": "<button class=\"ds-btn ds-btn-compile\">Compile <span class=\"ds-kbd\">Ctrl</span><span class=\"ds-kbd\">Enter</span></button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border:0;border-radius:var(--r-1,3px);font:800 16px 'Atkinson Hyperlegible Next',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,transform .1s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2.5px solid var(--blue-text,#1a55ab);outline-offset:2px}.ds-btn-compile{background:#16181d;color:#ffc917;box-shadow:inset 0 0 0 1px var(--rule-strong,#b7bcc5)}.ds-btn-compile:hover{background:#2a2d35}.ds-kbd{display:inline-block;padding:1px 5px;border:1px solid currentColor;border-radius:2px;font-size:11.5px;font-weight:500;opacity:.75}"
+    },
+    {
+      "name": "Run Button",
+      "kind": "button",
+      "refersTo": "button-run",
+      "description": "Run a task: channel green.",
+      "html": "<button class=\"ds-btn-run\">Run</button>",
+      "css": ".ds-btn-run{height:42px;padding:0 16px;border:0;border-radius:3px;background:var(--green,#00804a);color:#fff;font:800 16px 'Atkinson Hyperlegible Next',system-ui,sans-serif;cursor:pointer;transition:background-color .15s}.ds-btn-run:hover{background:color-mix(in srgb,var(--green,#00804a) 84%,#000)}.ds-btn-run:active{transform:translateY(1px)}.ds-btn-run:focus-visible{outline:2.5px solid var(--blue-text,#1a55ab);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary actions inside panes: inset rule stroke.",
+      "html": "<button class=\"ds-btn-ghost\">Show as text</button>",
+      "css": ".ds-btn-ghost{height:36px;padding:0 14px;border:0;border-radius:3px;background:transparent;color:var(--ink,#16181d);font:700 14px 'Atkinson Hyperlegible Next',system-ui,sans-serif;box-shadow:inset 0 0 0 1.5px var(--rule-strong,#b7bcc5);cursor:pointer}.ds-btn-ghost:hover{background:var(--panel-2,#f4f5f7)}.ds-btn-ghost:focus-visible{outline:2.5px solid var(--blue-text,#1a55ab);outline-offset:2px}"
+    },
+    {
+      "name": "Numeral Tile",
+      "kind": "chip",
+      "refersTo": "numeral-tile",
+      "description": "The index mark: black square, yellow tabular numeral.",
+      "html": "<span class=\"ds-tile\">05</span>",
+      "css": ".ds-tile{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 4px;background:var(--tile,#16181d);color:var(--tile-ink,#ffc917);border-radius:3px;font:700 12.5px/1 'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Gate Row",
+      "kind": "custom",
+      "refersTo": "gate-cell-pass",
+      "description": "Fixed equal gate cells; state changes colour only.",
+      "html": "<ol class=\"ds-gates\"><li class=\"ds-gate is-pass\"><span class=\"ds-num\">4</span><span class=\"ds-name\">IR+CFG</span><svg class=\"ds-icon\" viewBox=\"0 0 24 24\"><path d=\"M5 12l5 5 9-10\"/></svg></li><li class=\"ds-gate is-fail\"><span class=\"ds-num\">5</span><span class=\"ds-name\">Taint<br><code>E401</code></span><svg class=\"ds-icon\" viewBox=\"0 0 24 24\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg></li><li class=\"ds-gate\"><span class=\"ds-num\">6</span><span class=\"ds-name\">Approval</span></li></ol>",
+      "css": ".ds-gates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;padding:0;list-style:none;background:var(--panel,#fff);border:1px solid var(--rule,#d3d7dd);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-gate{display:flex;align-items:center;gap:8px;height:52px;padding:0 10px;color:var(--ink-3,#636a77);font:700 14px/1.25 inherit}.ds-gate+.ds-gate{border-left:1px solid var(--rule,#d3d7dd)}.ds-gate:hover{background:var(--panel-2,#f4f5f7)}.ds-num{display:grid;place-items:center;width:28px;height:28px;border-radius:3px;background:var(--rule,#d3d7dd);font-weight:800;font-size:15px}.ds-name{flex:1}.ds-name code{font:700 12px 'Atkinson Hyperlegible Mono',monospace}.ds-icon{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:square}.is-pass{color:var(--ink,#16181d)}.is-pass .ds-num{background:#16181d;color:#ffc917}.is-pass .ds-icon{color:var(--green-text,#006b3e)}.is-fail{background:var(--red,#cc1f2d);color:#fff}.is-fail:hover{background:color-mix(in srgb,var(--red,#cc1f2d) 86%,#000)}.is-fail .ds-num{background:#fff;color:#b01a27}"
+    },
+    {
+      "name": "Channel Sign",
+      "kind": "custom",
+      "refersTo": "channel-sign-error",
+      "description": "Full-width verdict band: green, red or yellow.",
+      "html": "<div class=\"ds-channel\"><span class=\"ds-ch-icon\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8 12h8\"/></svg></span><strong>E401 taint at 9:14</strong><span class=\"ds-expect\">Expected: E401 at 9:14</span></div>",
+      "css": ".ds-channel{display:flex;align-items:center;gap:12px;min-height:46px;padding:8px 20px;background:var(--red,#cc1f2d);color:#fff;font:800 16px 'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-ch-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:3px;background:#ffffff2e}.ds-ch-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.6}.ds-expect{margin-left:auto;font-weight:500;font-size:14px}"
+    },
+    {
+      "name": "Example Picker (sign select)",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "Select set on the yellow masthead with a 2px ink border.",
+      "html": "<div class=\"ds-mast\"><select class=\"ds-select\"><option>Error 7: prompt injection (taint)</option></select></div>",
+      "css": ".ds-mast{padding:10px 20px;background:#ffc917}.ds-select{appearance:none;width:100%;height:38px;padding:0 34px 0 12px;border:2px solid #16181d;border-radius:3px;background:#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%2316181d' stroke-width='2.6'/%3E%3C/svg%3E\") no-repeat right 10px center/16px;color:#16181d;font:600 15px 'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-select:focus-visible{outline:2.5px solid #16181d;outline-offset:2px}"
+    },
+    {
+      "name": "Arguments Field",
+      "kind": "input",
+      "refersTo": "input-args",
+      "description": "Mono JSON input with red invalid state.",
+      "html": "<input class=\"ds-input\" value=\"{&quot;topic&quot;: &quot;&quot;}\">",
+      "css": ".ds-input{height:38px;padding:8px 10px;border:1px solid var(--rule-strong,#b7bcc5);border-radius:3px;background:var(--panel,#fff);color:var(--ink,#16181d);font:14px/1.45 'Atkinson Hyperlegible Mono',ui-monospace,monospace}.ds-input:focus-visible{outline:2.5px solid var(--blue-text,#1a55ab);outline-offset:2px}.ds-input:invalid{border-color:var(--red,#cc1f2d);box-shadow:0 0 0 2px var(--red-wash,#fbe5e6)}"
+    },
+    {
+      "name": "Output Tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Phase tabs grouped under gate-range tiles, ink underline when active.",
+      "html": "<nav class=\"ds-tabs\"><span class=\"ds-group\">1-3</span><button class=\"ds-tab is-active\">Tokens</button><button class=\"ds-tab\">AST</button><button class=\"ds-tab\">Symbols</button></nav>",
+      "css": ".ds-tabs{display:flex;align-items:center;padding:0 6px;border-bottom:1px solid var(--rule,#d3d7dd);background:var(--panel,#fff);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-group{display:inline-grid;place-items:center;min-width:26px;height:18px;padding:0 4px;margin-right:4px;border-radius:2px;background:#16181d;color:#ffc917;font-size:11px;font-weight:800}.ds-tab{height:40px;padding:0 6px;border:0;background:transparent;color:var(--ink-2,#464c57);font:700 14px inherit;box-shadow:inset 0 -3px 0 transparent;cursor:pointer;transition:color .15s,box-shadow .15s}.ds-tab:hover{color:var(--ink,#16181d)}.ds-tab.is-active{color:var(--ink,#16181d);box-shadow:inset 0 -3px 0 var(--ink,#16181d)}.ds-tab:focus-visible{outline:2.5px solid var(--blue-text,#1a55ab);outline-offset:-3px}"
+    },
+    {
+      "name": "Division Sign (docs rail)",
+      "kind": "nav",
+      "refersTo": "division-sign",
+      "description": "Full-strength division hue tab over quiet rail links.",
+      "html": "<div class=\"ds-rail\"><span class=\"ds-div\">Specification</span><a class=\"ds-link is-active\" href=\"#\"><span class=\"ds-t\">04</span>Semantic analysis</a><a class=\"ds-link\" href=\"#\"><span class=\"ds-t\">05</span>IR and CFG</a></div>",
+      "css": ".ds-rail{padding:14px;background:var(--ground,#e9ebee);font:15px/1.3 'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-div{display:inline-flex;align-items:center;height:26px;padding:0 10px;margin-bottom:6px;background:var(--blue,#1d5fbf);color:#fff;border-radius:3px;font-size:14px;font-weight:800}.ds-link{display:flex;align-items:center;gap:10px;min-height:34px;padding:5px 8px;border-radius:3px;color:var(--ink-2,#464c57);text-decoration:none}.ds-link:hover{color:var(--ink,#16181d);background:color-mix(in srgb,var(--panel,#fff) 60%,transparent)}.ds-link.is-active{background:var(--panel,#fff);color:var(--ink,#16181d);font-weight:700;box-shadow:0 1px 2px #16181d14,0 2px 6px #16181d0f}.ds-link:focus-visible{outline:2px solid var(--blue,#1d5fbf);outline-offset:2px}.ds-t{display:inline-grid;place-items:center;min-width:24px;height:20px;border-radius:3px;background:#16181d;color:#ffc917;font:700 11.5px 'Atkinson Hyperlegible Mono',monospace}.is-active .ds-t{background:#ffc917;color:#16181d}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Arrivals Hall",
+    "overview": "AgentScript is signed like a terminal building. A programme walks ten fixed gates and leaves by one of two customs channels: green when there is nothing to declare, red with the exact declaration (code, line:col, path). Two surfaces share the same world. The editor (Operate) and the docs site (Read) use the same yellow sign masthead, black numeral tiles, terminal-grey ground, white panels, and the same three channel colours. Each surface then sets its own density. The editor is a compact 15px instrument with fixed-height cells. The docs are a calm 17px reading sheet with a 33em measure.\n\nThe world owns the frame and the frame only. Signage colour sits at full strength in the masthead, the gate row, the channel sign, and the division tabs. Inside panes and the reading sheet, ink on white stays quiet, and colour returns only as washes on the lines that matter (the tainted line, the path step, the marked listing row). Pictograms are drawn strokes, never font glyphs or emoji. Numerals are tabular everywhere, so states can change in a cell without anything shifting.\n\nDark mode means lit signs on black. The ground and panels go near-black and neutral, the yellow sign stays exactly the same, and the channel colours shift a little so they keep their contrast. A sign does not change colour at night.",
+    "keyCharacteristics": [
+      "A signage-yellow masthead with black ink, on both surfaces, in both themes.",
+      "A black numeral tile with a yellow numeral as the index mark for gates, stages, tabs and how-it-works pages.",
+      "Ten equal, fixed gate cells. Only their state colour changes.",
+      "One full-width channel sign carries the verdict: green, red, or yellow for warnings.",
+      "Flat white panels on terminal grey, with one soft shadow and 3px/6px corners.",
+      "Atkinson Hyperlegible Next for all UI and reading, and Atkinson Hyperlegible Mono for code and numerals."
+    ],
+    "rules": [
+      {
+        "name": "The Fixed Channel Rule",
+        "body": "Green means accepted or run. Red means rejected or tainted. Blue means approval or opt-in. Yellow means the sign, or a warning. Never use a channel hue for decoration, and never give one a second meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lit Sign Rule",
+        "body": "Signage yellow and sign ink stay the same in dark mode. Only the ground, panels, rules, inks, tile black and channel steps take their `night-` values.",
+        "section": "colors"
+      },
+      {
+        "name": "The Index Hue Rule",
+        "body": "In the docs, a division hue appears at full strength only on its own sign: the rail division tab, the H1 chip or tile, the prev/next mini sign, and search-result chips. Hue never tints the reading column.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every numeral (gate numbers, line:col, counts, budgets, table figures) is set tabular, so a changing value never shifts its neighbours.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Not Face Rule",
+        "body": "Emphasis steps from 400 to 700 to 800 within Atkinson Hyperlegible. Add no other display or serif face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Cells Rule",
+        "body": "Gates never move, resize, or reorder when state changes. Only colour and the trailing icon change. A stale result fades the row to 0.5 opacity and leaves it in place.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Sign Rule",
+        "body": "Signs (masthead, gate cells, channel sign, division tabs, tiles) carry no shadow. Hard offset shadows are not part of this world.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take every colour from the shared custom properties, and keep both stylesheets' `:root` and dark blocks value-for-value identical.",
+      "Do put a numeral tile on anything that is one of the ten gates or a numbered page.",
+      "Do keep the ten gate cells equal and fixed, and show state with colour plus an icon or code, never by moving the cells.",
+      "Do draw pictograms as inline stroke SVG in `currentColor`.",
+      "Do set numerals tabular, and set code, error codes and positions in Atkinson Hyperlegible Mono.",
+      "Do keep the reading column at about 33em and let only the frame carry signage colour."
+    ],
+    "donts": [
+      "Don't use green, red or blue for anything except accept/run, reject/taint and approval/opt-in.",
+      "Don't change the yellow sign in dark mode.",
+      "Don't use emoji or font-glyph icons as pictograms.",
+      "Don't add shadows to signs, or hard offset shadows anywhere.",
+      "Don't add a second display face, a serif, or decorative gradients.",
+      "Don't add small uppercase kicker or eyebrow labels above headings. The division sign and the numeral tile already do the job of telling the reader where they are."
+    ]
+  }
+}
