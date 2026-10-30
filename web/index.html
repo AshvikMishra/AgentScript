@@ -5,43 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AgentScript Editor</title>
   <meta name="description" content="AgentScript: a tiny language and compiler for safe AI agents. Edit, compile and run programs and inspect every compiler phase.">
-  <meta name="color-scheme" content="dark light">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z' fill='%237c8cff'/%3E%3Cpath d='m11 16 3.5 3.5L21 13' stroke='%23fff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffc917">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2316181d'/%3E%3Cpath d='M8 16h14m-6-7 7 7-7 7' stroke='%23ffc917' stroke-width='3.2' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+  <script>
+    /* Apply the saved theme before first paint, so the page never flashes the other one. */
+    try { var t = localStorage.getItem("agentscript.theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500;700&family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z"></path>
-        <path class="tick" d="m11 16 3.5 3.5L21 13"></path>
-      </svg>
-      <div class="brand-text">
-        <h1>AgentScript</h1>
-        <p class="subtitle">A tiny language and compiler for safe AI agents</p>
-      </div>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="AgentScript editor home">
+      <span class="brand-tile" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 12h13M12 5l7 7-7 7"/></svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-name">AgentScript</span>
+        <span class="brand-sub">Compiler for safe AI agents</span>
+      </span>
+    </a>
+
+    <div class="example-pick">
+      <label class="example-label" for="example-select">Example</label>
+      <select id="example-select" class="select select-sign">
+        <option value="">Loading...</option>
+      </select>
     </div>
-    <div class="header-tools">
-      <span id="status" class="status" role="status" aria-live="polite">Loading examples...</span>
+
+    <nav class="mast-tools" aria-label="Site">
+      <a class="mast-link" href="/docs/">Docs</a>
+      <a class="mast-link" href="https://github.com/AshvikMishra/AgentScript" target="_blank" rel="noopener">GitHub</a>
+      <span class="mast-sep" aria-hidden="true"></span>
       <div class="zoom" role="group" aria-label="Code font size">
-        <button type="button" class="btn btn-ghost btn-small" id="zoom-out" title="Smaller code font" aria-label="Smaller code font">A&#8722;</button>
-        <button type="button" class="btn btn-ghost btn-small" id="zoom-in" title="Larger code font" aria-label="Larger code font">A+</button>
+        <button type="button" class="mast-btn" id="zoom-out" title="Smaller code font" aria-label="Smaller code font">A&#8722;</button>
+        <button type="button" class="mast-btn" id="zoom-in" title="Larger code font" aria-label="Larger code font">A+</button>
       </div>
-    </div>
+      <button type="button" class="mast-btn mast-icon" id="theme-btn" title="Switch light or dark" aria-label="Switch light or dark theme">
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
+    </nav>
   </header>
 
-  <nav class="pipeline" aria-label="Compiler pipeline">
-    <ol id="pipeline-strip" class="pipeline-strip"></ol>
+  <nav class="gates" aria-label="Compiler pipeline: the ten stages">
+    <ol id="pipeline-strip" class="gate-row"></ol>
   </nav>
 
+  <div id="channel" class="channel" data-kind="busy">
+    <span class="channel-icon" aria-hidden="true"></span>
+    <span id="status" class="status" role="status" aria-live="polite">Loading examples...</span>
+    <span id="channel-expect" class="channel-expect"></span>
+  </div>
+
   <main class="workspace">
-    <section class="pane pane-left" aria-label="Source">
-      <div class="example-bar">
-        <label class="field-label" for="example-select">Example</label>
-        <select id="example-select" class="select">
-          <option value="">Loading...</option>
-        </select>
+    <section class="pane pane-source" aria-label="Source">
+      <div class="pane-head">
+        <h2 class="pane-title">Source</h2>
         <p id="example-desc" class="example-desc"></p>
       </div>
 
@@ -52,14 +76,14 @@
       </div>
 
       <div class="action-bar">
-        <button type="button" id="compile-btn" class="btn btn-primary">
+        <button type="button" id="compile-btn" class="btn btn-compile">
           <span class="btn-label">Compile</span>
-          <kbd class="kbd" data-mod>Ctrl</kbd><kbd class="kbd">Enter</kbd>
+          <span class="kbds"><kbd class="kbd" data-mod>Ctrl</kbd><kbd class="kbd">Enter</kbd></span>
         </button>
-        <span id="edit-hint" class="edit-hint" hidden>Edited since last compile</span>
+        <span id="edit-hint" class="edit-hint" hidden>Edited since the last compile</span>
       </div>
 
-      <div class="run-card" aria-label="Run">
+      <div class="run-dock" aria-label="Run">
         <div class="run-grid">
           <div class="run-field">
             <label class="field-label" for="task-select">Task</label>
@@ -69,11 +93,11 @@
           </div>
           <div class="run-field run-args">
             <label class="field-label" for="args-input">Arguments (JSON)</label>
-            <textarea id="args-input" class="args-input" rows="2" spellcheck="false">{}</textarea>
+            <textarea id="args-input" class="args-input" rows="1" spellcheck="false">{}</textarea>
           </div>
         </div>
         <div class="run-row">
-          <div class="segmented" role="radiogroup" aria-label="Answer to confirm()">
+          <div class="segmented seg-confirm" role="radiogroup" aria-label="Answer to confirm()">
             <span class="seg-caption">confirm()</span>
             <button type="button" class="seg-btn is-on" role="radio" aria-checked="true" data-confirm="true">Approve</button>
             <button type="button" class="seg-btn" role="radio" aria-checked="false" data-confirm="false">Deny</button>
@@ -85,13 +109,13 @@
           </label>
           <button type="button" id="run-btn" class="btn btn-run">
             <span class="btn-label">Run</span>
-            <kbd class="kbd" data-mod>Ctrl</kbd><kbd class="kbd">Shift</kbd><kbd class="kbd">Enter</kbd>
+            <span class="kbds"><kbd class="kbd" data-mod>Ctrl</kbd><kbd class="kbd">Shift</kbd><kbd class="kbd">Enter</kbd></span>
           </button>
         </div>
       </div>
     </section>
 
-    <section class="pane pane-right" aria-label="Compiler output">
+    <section class="pane pane-output" aria-label="Compiler output">
       <div class="tabbar-wrap">
         <div id="tabbar" class="tabbar" role="tablist" aria-label="Phase artifacts"></div>
       </div>

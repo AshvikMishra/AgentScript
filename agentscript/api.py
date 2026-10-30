@@ -2,6 +2,7 @@
 
     GET  /           web/index.html
     GET  /static/*   files under web/
+    GET  /docs/      the static documentation site (docs/site/index.html)
     GET  /examples   examples/manifest.json entries plus each file's source
     POST /compile    {"source"} -> CompileResult.to_dict()
     POST /run        {"source", "task", "args", "live", "confirm"} -> run_source(...)
@@ -24,6 +25,7 @@ from .pipeline import compile_source, run_source
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT / "web"
+SITE_DIR = ROOT / "docs" / "site"
 EXAMPLES_DIR = ROOT / "examples"
 
 
@@ -53,7 +55,9 @@ def load_examples() -> list[dict]:
     return out
 
 
-app = FastAPI(title="AgentScript", version="0.1.0")
+# /docs is the documentation site, so FastAPI's own API docs move under /api.
+app = FastAPI(title="AgentScript", version="0.1.0",
+              docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
@@ -75,3 +79,7 @@ def compile_endpoint(req: CompileRequest) -> dict:
 @app.post("/run")
 def run_endpoint(req: RunRequest) -> dict:
     return run_source(req.source, req.task, req.args, live=req.live, confirm=req.confirm)
+
+
+# Mounted last so the API routes above always win.
+app.mount("/docs", StaticFiles(directory=SITE_DIR, html=True), name="docs")

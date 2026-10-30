@@ -127,6 +127,23 @@
     return parts.join(" · ");
   }
 
+  /** Does this compile result match what the manifest says the example should do?
+   *  Returns {text, match}: match is true or false, or null when there is nothing to check. */
+  function expectationCheck(ex, compileResp) {
+    if (!ex) return { text: "", match: null };
+    const summary = expectSummary(ex);
+    if (!compileResp) return { text: summary, match: null };
+    const err = firstError(compileResp.diagnostics);
+    let match;
+    if (ex.expect) {
+      match = Boolean(err && err.code === ex.expect.code && err.line === ex.expect.line && err.col === ex.expect.col);
+    } else {
+      const codes = (compileResp.diagnostics || []).filter((d) => d.severity === "warning").map((d) => d.code);
+      match = !err && (ex.warnings || []).every((w) => codes.indexOf(w.code) >= 0);
+    }
+    return { text: summary, match };
+  }
+
   function firstError(diags) {
     return (diags || []).find((d) => d && d.severity !== "warning") || null;
   }
@@ -337,6 +354,31 @@
     return el;
   }
 
+  // One stroke family for every pictogram: 24-unit grid, 2.2 stroke, square caps.
+  const ICONS = {
+    check: "M5 12.5l4.5 4.5L19 7.5",
+    cross: "M6 6l12 12M18 6L6 18",
+    warn: "M12 4L2.8 20h18.4zM12 10v4.5M12 17.2v.1",
+    dash: "M6 12h12",
+    arrow: "M4 12h13M12 5l7 7-7 7",
+    stop: "M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2zM8 12h8",
+    play: "M7 4.5v15l12-7.5z",
+    pause: "M8 5v14M16 5v14",
+    busy: "M12 3a9 9 0 1 0 9 9",
+  };
+
+  function icon(name, cls) {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", "icon icon-" + name + (cls ? " " + cls : ""));
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", ICONS[name] || ICONS.dash);
+    svg.appendChild(path);
+    return svg;
+  }
+
   function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
   }
@@ -385,16 +427,41 @@
     const host = $("#toasts");
     const el = h("div", { class: "toast toast-" + (kind || "error"), role: "alert" },
       h("span", { class: "toast-msg", text: message }),
-      h("button", { type: "button", class: "toast-close", "aria-label": "Dismiss", text: "×", onclick: () => el.remove() }));
+      h("button", { type: "button", class: "toast-close", "aria-label": "Dismiss", onclick: () => el.remove() }, icon("cross")));
     host.appendChild(el);
     window.setTimeout(() => el.classList.add("is-leaving"), 6500);
     window.setTimeout(() => el.remove(), 7000);
   }
 
+  const CHANNEL_ICON = { ok: "check", warning: "warn", error: "stop", busy: "busy" };
+
+  /** The channel sign under the gates: green when cleared, red when stopped. */
   function setStatus(text, kind) {
     const el = $("#status");
     el.textContent = text;
     el.className = "status" + (kind ? " status-" + kind : "");
+    const channel = $("#channel");
+    channel.dataset.kind = kind || "busy";
+    const host = channel.querySelector(".channel-icon");
+    clear(host);
+    host.appendChild(icon(CHANNEL_ICON[kind] || "busy"));
+  }
+
+  /** "Expected: ..." on the right of the channel sign, marked when the compile agrees. */
+  function renderExpectation() {
+    const el = $("#channel-expect");
+    clear(el);
+    const ex = state.examples[state.exampleIndex];
+    const pristine = Boolean(ex && editor && state.compiledSource === ex.source && editor.getValue() === ex.source);
+    const check = expectationCheck(ex, pristine ? state.compile : null);
+    if (!check.text) return;
+    el.appendChild(h("span", { class: "expect-text", text: check.text }));
+    if (check.match !== null) {
+      el.appendChild(h("span", { class: "expect-verdict " + (check.match ? "is-match" : "is-miss") },
+        icon(check.match ? "check" : "cross"), check.match ? "as expected" : "differs from expected"));
+    } else if (ex && state.compiledSource !== null && !pristine) {
+      el.appendChild(h("span", { class: "expect-verdict is-edited", text: "source edited" }));
+    }
   }
 
   // ------------------------------------------------------------------ editor adapters
@@ -496,7 +563,7 @@
               class: "gm gm-" + entry.sev,
               title: entry.titles.join("\n"),
               onmousedown: (e) => { e.preventDefault(); onMarkerClick(entry.index); },
-            }, entry.sev === "error" ? "●" : "▲");
+            });
             cm.setGutterMarker(lineIdx, "diag-gutter", marker);
             gutterLines.push(lineIdx);
           }
@@ -610,7 +677,7 @@
   // ------------------------------------------------------------------ pipeline strip
 
   const STATUS_TEXT = { idle: "not run", pass: "passed", warn: "passed with a warning", fail: "failed", skipped: "skipped" };
-  const STATUS_ICON = { idle: "–", pass: "✓", warn: "!", fail: "✕", skipped: "–" };
+  const STATUS_ICON = { idle: "dash", pass: "check", warn: "warn", fail: "cross", skipped: "dash" };
 
   function renderPipeline() {
     const strip = $("#pipeline-strip");
@@ -622,8 +689,8 @@
         h("button", { type: "button", class: "stage-chip", title, "aria-label": title, onclick: () => activateTab(s.tab) },
           h("span", { class: "stage-num", text: String(i + 1) }),
           h("span", { class: "stage-label", text: s.label }),
-          h("span", { class: "stage-icon", "aria-hidden": "true", text: STATUS_ICON[s.status] }),
-          s.code ? h("span", { class: "stage-code", text: s.code }) : null)));
+          s.code ? h("span", { class: "stage-code", text: s.code }) : null,
+          h("span", { class: "stage-icon" }, icon(STATUS_ICON[s.status])))));
     });
     return statuses;
   }
@@ -702,9 +769,9 @@
     return h("pre", { class: "code-block" + (cls ? " " + cls : "") }, h("code", { text: text || "" }));
   }
 
-  function emptyState(icon, title, body, action) {
+  function emptyState(iconName, title, body, action) {
     return h("div", { class: "empty" },
-      h("div", { class: "empty-icon", "aria-hidden": "true", text: icon }),
+      h("div", { class: "empty-icon" }, icon(iconName)),
       h("p", { class: "empty-title", text: title }),
       body ? h("p", { class: "empty-body", text: body }) : null,
       action || null);
@@ -718,7 +785,7 @@
   /** The panel body for a phase that has no artifact, or null when it has one. */
   function missingArtifactView(tab) {
     if (!state.compile) {
-      return emptyState("▶", "Nothing compiled yet", "Press Compile (" + modKey() + "+Enter) to fill this tab.");
+      return emptyState("play", "Nothing compiled yet", "Press Compile (" + modKey() + "+Enter) to fill this tab.");
     }
     const art = state.compile.phases ? state.compile.phases[tab.artifact] : null;
     if (art) return null;
@@ -731,11 +798,11 @@
         diagnosticCard(d, allDiagnostics(state.compile, state.run).indexOf(d)));
     }
     if (mine && mine.status === "skipped") {
-      return emptyState("–", "This phase did not run", "The compiler produced no artifact for it.");
+      return emptyState("dash", "This phase did not run", "The compiler produced no artifact for it.");
     }
     const stop = stoppedStage();
     const where = stop ? stop.label + (stop.code ? " (" + stop.code + ")" : "") : "an earlier phase";
-    return emptyState("⏸", "Not reached: compilation stopped at " + where, "Fix the error shown in the Errors tab, then compile again.",
+    return emptyState("pause", "Not reached: compilation stopped at " + where, "Fix the error shown in the Errors tab, then compile again.",
       h("button", { type: "button", class: "btn btn-ghost", text: "Show errors", onclick: () => activateTab("errors") }));
   }
 
@@ -799,7 +866,7 @@
   function renderErrors(panel) {
     const diags = allDiagnostics(state.compile, state.run);
     if (!state.compile && !state.run) {
-      panel.appendChild(emptyState("▶", "Nothing compiled yet", "Pick an example or write a program, then press Compile."));
+      panel.appendChild(emptyState("play", "Nothing compiled yet", "Pick an example or write a program, then press Compile."));
       return;
     }
     const counts = countDiagnostics(diags);
@@ -807,7 +874,7 @@
       counts.errors + " error" + (counts.errors === 1 ? "" : "s") + ", " + counts.warnings + " warning" + (counts.warnings === 1 ? "" : "s") +
       (diags.length ? " · click one to jump to it in the editor" : "")));
     if (diags.length === 0) {
-      panel.appendChild(emptyState("✓", "No errors or warnings", state.run ? "The program compiled and the run finished cleanly." : "Every compile-time check passed."));
+      panel.appendChild(emptyState("check", "No errors or warnings", state.run ? "The program compiled and the run finished cleanly." : "Every compile-time check passed."));
       return;
     }
     panel.appendChild(h("div", { class: "diag-list" }, diags.map((d, i) => diagnosticCard(d, i))));
@@ -892,14 +959,14 @@
         theme: "base",
         fontFamily: cssVar("--font-mono") || "monospace",
         themeVariables: {
-          background: cssVar("--surface"),
-          primaryColor: cssVar("--surface-2"),
-          primaryTextColor: cssVar("--text"),
-          primaryBorderColor: cssVar("--accent"),
-          lineColor: cssVar("--text-muted"),
-          secondaryColor: cssVar("--surface-3"),
-          tertiaryColor: cssVar("--surface"),
-          edgeLabelBackground: cssVar("--surface"),
+          background: cssVar("--panel"),
+          primaryColor: cssVar("--panel-2"),
+          primaryTextColor: cssVar("--ink"),
+          primaryBorderColor: cssVar("--ink"),
+          lineColor: cssVar("--ink-2"),
+          secondaryColor: cssVar("--blue-wash"),
+          tertiaryColor: cssVar("--panel"),
+          edgeLabelBackground: cssVar("--panel"),
           fontSize: "14px",
         },
         flowchart: { curve: "basis", htmlLabels: false, useMaxWidth: false },
@@ -986,7 +1053,7 @@
     const run = state.run;
     if (!run) {
       const msg = state.compile && !state.compile.ok ? "Fix the compile error first, then run a task." : "Choose a task and arguments, then press Run (" + modKey() + "+Shift+Enter).";
-      panel.appendChild(emptyState("▶", "No run yet", msg));
+      panel.appendChild(emptyState("play", "No run yet", msg));
       return;
     }
     const runtime = (run.diagnostics || []).filter((d) => d.phase === "runtime");
@@ -1073,6 +1140,7 @@
   }
 
   function renderAll() {
+    renderExpectation();
     const statuses = renderPipeline();
     updateTabDecorations(statuses);
     for (const t of TABS) renderPanel(t.id);
@@ -1216,6 +1284,8 @@
     const dirty = state.compiledSource !== null && editor.getValue() !== state.compiledSource;
     $("#edit-hint").hidden = !dirty;
     $("#pipeline-strip").classList.toggle("is-stale", dirty);
+    $("#channel").classList.toggle("is-stale", dirty);
+    renderExpectation();
   }
 
   // ------------------------------------------------------------------ compile and run
@@ -1369,17 +1439,29 @@
       else compile();
     }, true);
     editor.onChange(markDirty);
+    const onScheme = () => {
+      // Mermaid bakes colours into the SVG: redraw with the new theme.
+      mermaidReady = false;
+      mermaidCache.clear();
+      document.querySelectorAll("#panel-cfg .cfg-graph").forEach((n) => delete n.dataset.rendered);
+      renderCfgGraphs();
+    };
+    $("#theme-btn").addEventListener("click", () => {
+      const next = isDark() ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      storageSet("agentscript.theme", next);
+      onScheme();
+    });
     if (window.matchMedia) {
-      const mq = window.matchMedia("(prefers-color-scheme: light)");
-      const onScheme = () => {
-        // Mermaid bakes colours into the SVG: redraw with the new theme.
-        mermaidReady = false;
-        mermaidCache.clear();
-        document.querySelectorAll("#panel-cfg .cfg-graph").forEach((n) => delete n.dataset.rendered);
-        renderCfgGraphs();
-      };
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
       if (mq.addEventListener) mq.addEventListener("change", onScheme);
     }
+  }
+
+  function isDark() {
+    const t = document.documentElement.dataset.theme;
+    if (t === "dark" || t === "light") return t === "dark";
+    return Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
   }
 
   async function start() {

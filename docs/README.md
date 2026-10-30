@@ -32,7 +32,7 @@ section of `PRD.md`.
 | [presentation/demo-script.md](presentation/demo-script.md) | The live demo, step by step: what to open, click, show and say, plus a CLI fallback |
 | [presentation/viva-notes.md](presentation/viva-notes.md) | Likely viva questions with prepared answers, and related work |
 | [presentation/AgentScript.pptx](presentation/AgentScript.pptx) | The slide deck (19 slides: architecture, diagrams, real outputs). Rebuild with `python docs/presentation/build_deck.py` (needs `pip install python-pptx`) |
-| [site/index.html](site/index.html) | The documentation website: every doc above plus the example programs, searchable, in one static page. Open it in a browser; rebuild with `python docs/site/build.py` after editing any doc |
+| [site/index.html](site/index.html) | The documentation website: every doc above plus the example programs, searchable, in one static page. Open it in a browser, or at `/docs/` when the server is running; rebuild with `python docs/site/build.py` after editing any doc |
 | [report/AgentScript-IEEE.docx](report/AgentScript-IEEE.docx) | IEEE conference-format project report (Word); [report/AgentScript-IEEE.tex](report/AgentScript-IEEE.tex) is the same report as IEEEtran LaTeX for Overleaf |
 | [prompts/](prompts/) | Prompts used to drive the agent sessions that produced these docs; do not edit |
 
@@ -64,3 +64,22 @@ Sections that need real compiler output are marked with a note of the form
 `> Filled in at M<n>: <what to paste, from which command>.` Each note is replaced with
 output pasted from a real run once milestone M<n> passes its gate, and the note is removed.
 Compiler output in these docs is never written by hand.
+
+## Deploying on Vercel
+
+The repository deploys as one Vercel project with no settings to change: import it from GitHub
+(or run `vercel deploy` in the repository root). Vercel finds the FastAPI `app` in the root
+`app.py` (which re-exports `agentscript.api.app`), installs `requirements.txt`, and serves:
+
+| Path | What |
+| --- | --- |
+| `/` | the web editor (`web/`) |
+| `/docs/` | this documentation site (`docs/site/index.html`) |
+| `/examples`, `/compile`, `/run` | the API, as one Python function |
+| `/api/docs` | FastAPI's generated API reference |
+
+No API key is needed: tools are mocked unless the editor's Live tools switch is on. Even then
+only `web_search` (DuckDuckGo), `llm` (only when an `ANTHROPIC_API_KEY` environment variable is
+set) and `read_file` (only inside `./sandbox/`) go live; any live failure falls back to the mock,
+and `send_email` and `delete_file` are always simulated. `vercel.json` gives the function 60 seconds;
+`.vercelignore` keeps the virtualenv, tests and logs out of the upload.

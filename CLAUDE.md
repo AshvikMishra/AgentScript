@@ -43,7 +43,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # set up
 .venv/bin/python -m agentscript compile examples/valid_report.as --json         # full /compile JSON
 .venv/bin/python -m agentscript run examples/valid_report.as --task report --args '{"topic": "AI safety"}'
     # options: --deny-confirm (confirm answers no), --live (real llm/web_search; optional)
-.venv/bin/python -m agentscript serve --port 8000                    # web editor + API
+.venv/bin/python -m agentscript serve --port 8000                    # web editor + API (+ docs site at /docs/)
 .venv/bin/python tests/update_golden.py                              # regenerate golden files (only for intended changes)
 ```
 

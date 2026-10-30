@@ -55,6 +55,23 @@ def test_static_cannot_escape_web_dir():
     assert r.status_code == 404 or "FastAPI" not in r.text
 
 
+def test_docs_site_is_served():
+    r = client.get("/docs/")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    assert r.content == (ROOT / "docs" / "site" / "index.html").read_bytes()
+
+
+def test_api_docs_moved_under_api():
+    assert client.get("/api/openapi.json").status_code == 200
+
+
+def test_vercel_entrypoint_exports_the_app():
+    import app as entry
+
+    assert entry.app is app
+
+
 # --------------------------------------------------------------------- examples
 
 

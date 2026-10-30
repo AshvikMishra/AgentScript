@@ -17,6 +17,7 @@
 | --- | --- | --- |
 | `GET /` | – | `web/index.html` |
 | `GET /static/...` | – | `web/app.js`, `web/style.css` |
+| `GET /docs/` | – | the documentation site, `docs/site/index.html` (FastAPI's own API docs move to `/api/docs`) |
 | `GET /examples` | – | `[{"file", "title", "description", "expect", "warnings", "run", "source"}, ...]`, the `examples/manifest.json` entries in order (18 of them) plus each file's source |
 | `POST /compile` | `{"source": "..."}` | `CompileResult.to_dict()`: `ok`, `diagnostics`, `warnings_count`, `phases`, `stats`, `tasks` |
 | `POST /run` | `{"source", "task", "args", "live", "confirm"}` | `ok`, `diagnostics`, `value`, `calls`, `calls_used`, `budget`, `rounds` |
@@ -42,28 +43,39 @@ plain `<textarea>` when CodeMirror did not load) and one `state` object: `exampl
 `/compile` response and the source it was for), `run` and `runSource` (the same for `/run`),
 `compiling` / `running` (in-flight guards), `activeTab`, `argsTask`, `forceArgs`, `confirm`,
 `cfgShowText` and `selectedDiag`. Nothing is stored on the server between requests; the browser's
-`localStorage` remembers only the last example, the last tab and the code font size.
+`localStorage` remembers only the last example, the last tab, the code font size and the theme.
 
 **Page layout.**
 
 ```
 +----------------------------------------------------------------------------------+
-| AgentScript  A tiny language and compiler...      #status line          [A-] [A+] |
-| 1 Lexer > 2 Parser > 3 Semantic > 4 IR+CFG > 5 Taint > 6 Approval > 7 Optimizer   |
-|   > 8 Scheduler > 9 Codegen > 10 VM        (pipeline strip, one chip per stage)   |
+| [->] AgentScript   Example [Valid: sanitized report  v]   Docs GitHub [A-][A+][o] |  yellow sign
++----------------------------------------------------------------------------------+
+| 1 Lexer | 2 Parser | 3 Semantic | 4 IR+CFG | 5 Taint | ... | 9 Codegen | 10 VM    |  the ten gates
++----------------------------------------------------------------------------------+
+| [x] E401 taint at 9:14 · 24 ms          Expected: E401 at 9:14 (taint) [as expected]|  channel sign
 +---------------------------------------+------------------------------------------+
-| Example [valid_report.as          v]  | Errors | Tokens | AST | Symbols | IR |    |
-|  description · expected outcome       | CFG | Taint | Approval | Optimized IR |   |
-| code pane (CodeMirror 5)              | Rounds | Bytecode | Output              |
-|  - AgentScript syntax highlighting    |------------------------------------------|
-|  - red squiggle + gutter dot: error   | selected tab's panel                     |
-|  - yellow squiggle + gutter ▲: warning|                                          |
+| Source  description                   | Errors | Tokens | AST | Symbols | IR |    |
+| code pane (CodeMirror 5)              | CFG | Taint | Approval | Optimized IR |   |
+|  - AgentScript syntax highlighting    | Rounds | Bytecode | Output              |
+|  - red squiggle + gutter square: error|------------------------------------------|
+|  - amber squiggle + gutter triangle:  | selected tab's panel                     |
+|    warning                            |                                          |
 |  - tinted lines: untrusted values     |                                          |
 | [Compile  Ctrl Enter]                 |                                          |
 | Task [report v]  Arguments (JSON) [ ] |                                          |
 | confirm() [Approve|Deny] [ ] Live tools [Run  Ctrl Shift Enter]                  |
 +---------------------------------------+------------------------------------------+
 ```
+
+The design borrows airport wayfinding: the header is a yellow sign, each compiler stage is a
+numbered gate (black tile when passed, red cell with the code when it stopped the program, amber
+when it warned, grey when not reached), and the line under the gates is the channel sign: green
+when the program compiled (or the run finished), red when it was stopped, yellow for a warning.
+Its right side repeats the example's expected outcome from `examples/manifest.json` and says
+"as expected" when the compile result matches it (same first error code, line and column, or a
+clean compile with the listed warnings), or "source edited" once the code no longer matches the
+example. The theme button switches light and dark (the default follows the system setting).
 
 The run form sits under the editor (`#task-select`, `#args-input`, the Approve/Deny buttons,
 `#live-toggle`, `#run-btn`); the Output tab shows only the result.
@@ -444,9 +456,9 @@ Compile clears the squiggle: that is `valid_report.as`.
 | `agentscript/api.py` | `app` (FastAPI), `CompileRequest`, `RunRequest` (`source`, `task`, `args` as any JSON, `live=False`, `confirm=True`), `load_examples()`, routes `index` (`GET /`), `examples` (`GET /examples`), `compile_endpoint` (`POST /compile`), `run_endpoint` (`POST /run`), the `/static` mount of `web/` | Thin HTTP layer; no compiler logic. `args` accepts any JSON so a non-object reaches the VM and becomes E604, not a 422. |
 | `agentscript/pipeline.py` | `compile_source(source, parallel=True)`, `CompileResult` (`to_dict`, `error`, `warnings`), `PHASES`, `run_source(source, task, args, live, confirm)`, `execute`, `make_registry` | The one driver shared by API, CLI and tests. `compile_source` never raises (E000 for internal errors); `run_source` builds the `/run` dict and never raises. |
 | `agentscript/__main__.py` | `cmd_serve` (`serve [--host 127.0.0.1] [--port 8000]`, runs `uvicorn.run("agentscript.api:app", ...)`) | Starts the server. |
-| `web/index.html` | header (`#status`, `#zoom-in`, `#zoom-out`), `#pipeline-strip`, `#example-select`, `#example-desc`, `#editor-host` / `#source`, `#compile-btn`, `#edit-hint`, `#task-select`, `#args-input`, the `[data-confirm]` Approve/Deny buttons, `#live-toggle`, `#run-btn`, `#tabbar`, `#panels`, `#toasts` | The static page; loads CodeMirror 5.65.16 and Mermaid 10.9.1 from pinned CDN URLs, then `/static/app.js`. |
+| `web/index.html` | masthead (`#example-select`, Docs and GitHub links, `#zoom-in`, `#zoom-out`, `#theme-btn`), `#pipeline-strip`, the channel sign (`#channel`, `#status`, `#channel-expect`), `#example-desc`, `#editor-host` / `#source`, `#compile-btn`, `#edit-hint`, `#task-select`, `#args-input`, the `[data-confirm]` Approve/Deny buttons, `#live-toggle`, `#run-btn`, `#tabbar`, `#panels`, `#toasts` | The static page; loads the Atkinson Hyperlegible fonts, CodeMirror 5.65.16 and Mermaid 10.9.1 from pinned CDN URLs, then `/static/app.js`. |
 | `web/app.js` | Pure helpers (no DOM; `STAGES`, `TABS`, `tokenRange`, `defaultArgs`, `expectSummary`, `stageStatuses`, `collectTaintedLines`, `budgetMeter`, ...); editor wrappers `createCodeMirrorEditor` / `createTextareaEditor` (`setDiagnostics`, `setTaintLines`, `highlightLine`, `jumpTo`); `api(path, body)` (fetch with a 90 s timeout); `renderPipeline`, `buildTabs`, `activateTab`, `renderPanel` and the per-tab renderers (`renderErrors`, `renderTokens`, `renderCfg` + `renderCfgGraphs`, `renderTaint`, `renderOptimized`, `renderRounds`, `renderOutput`, `diagnosticCard`); `renderAll`, `applyDiagnostics`, `updateTaintHighlight`; `populateExamples`, `loadExample`, `updateTasks`, `onTaskChange`, `setConfirm`; `compile()`, `run()`; `bindEvents`, `start` | All front-end behaviour, in one IIFE with no build step. Text always goes in through `textContent` (the `h()` builder), never `innerHTML`. |
-| `web/style.css` | colour tokens for dark and light schemes, `.sq-error`, `.sq-warning`, `.sq-eol`, `.cm-tainted`, `.cm-path-hl`, `.cm-flash`, the pipeline strip, tabs, cards, the meter and the call log table | Styling only. |
+| `web/style.css` | colour tokens for the light and dark themes (shared with the docs site), `.sq-error`, `.sq-warning`, `.sq-eol`, `.cm-tainted`, `.cm-path-hl`, `.cm-flash`, the masthead, the gate row, the channel sign, tabs, cards, the meter and the call log table | Styling only. |
 
 **Tests.** `tests/test_api.py` uses FastAPI's `TestClient`: the page and static files
 (`test_index_html`, `test_static_files`, `test_static_missing_is_404`,
